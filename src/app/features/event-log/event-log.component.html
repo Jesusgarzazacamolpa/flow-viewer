@@ -1,0 +1,47 @@
+<div class="overflow-hidden">
+  <div class="mb-2 flex items-center justify-between">
+    <h3 class="text-sm font-medium text-slate-700 dark:text-slate-300">Bitácora de eventos (SSE)</h3>
+    <span class="text-xs text-slate-500 dark:text-slate-500">{{ events.length }} eventos</span>
+  </div>
+
+  <ul class="divide-y divide-slate-300 dark:divide-slate-800">
+    <li
+      *ngFor="let event of events; trackBy: trackById"
+      class="border-l-2 border-transparent py-2 pl-3 transition-colors first:border-t-0"
+      [ngClass]="eventBorderClass(event.eventType)"
+    >
+      <div class="flex items-start justify-between gap-2">
+        <div class="min-w-0 flex-1">
+          <span
+            class="inline-block rounded px-2 py-0.5 text-xs font-medium"
+            [ngClass]="eventTypeBadgeClass(event.eventType)"
+          >
+            {{ event.eventType }}
+          </span>
+          <span class="ml-2 text-xs text-slate-500 dark:text-slate-500">
+            {{ event.stepName || event.toolName || '' }}
+          </span>
+          <p
+            *ngIf="event.errorMessage"
+            class="mt-1 text-sm text-red-600 dark:text-red-400"
+          >
+            {{ event.errorMessage }}
+          </p>
+        </div>
+        <time
+          class="whitespace-nowrap text-xs text-slate-500 dark:text-slate-600"
+          [dateTime]="event.timestamp"
+        >
+          {{ event.timestamp | date:'HH:mm:ss' }}
+        </time>
+      </div>
+    </li>
+
+    <li
+      *ngIf="events.length === 0"
+      class="py-4 text-center text-sm text-slate-500 dark:text-slate-500"
+    >
+      Esperando eventos...
+    </li>
+  </ul>
+</div>

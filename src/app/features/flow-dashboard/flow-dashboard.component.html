@@ -1,0 +1,113 @@
+<div class="space-y-6">
+  <header>
+    <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100">Flow Viewer — Bitácora de Procesos</h1>
+    <p class="text-sm text-slate-500 dark:text-slate-400">Control de ejecuciones de flujos de IA en tiempo real.</p>
+  </header>
+
+  <section class="rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900/50 p-4">
+    <h2 class="mb-3 text-sm font-medium text-slate-700 dark:text-slate-300">Iniciar nuevo flujo</h2>
+    <form
+      (ngSubmit)="onStart()"
+      class="grid grid-cols-1 gap-3 sm:grid-cols-5"
+    >
+      <input
+        type="text"
+        placeholder="flowId (compra-vehiculo)"
+        [(ngModel)]="form.flowId"
+        name="flowId"
+        class="rounded-md border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-3 py-2 text-sm text-slate-800 dark:text-slate-200 placeholder-slate-500 dark:placeholder-slate-600 focus:border-sky-500 dark:focus:border-sky-500 focus:outline-none"
+      />
+
+      <app-searchable-select
+        name="customerId"
+        [(value)]="form.customerId"
+        [options]="customerOptions()"
+        [placeholder]="'Seleccionar cliente...'"
+        [noResultsText]="'No se encontraron clientes'"
+        [disabled]="loadingCustomers()"
+      >
+      </app-searchable-select>
+
+      <app-searchable-select
+        name="vehicleId"
+        [(value)]="form.vehicleId"
+        [options]="vehicleOptions()"
+        [placeholder]="'Seleccionar vehículo disponible...'"
+        [noResultsText]="'No hay vehículos disponibles'"
+        [disabled]="loadingVehicles()"
+      >
+      </app-searchable-select>
+
+      <app-searchable-select
+        name="salesAgentId"
+        [(value)]="form.salesAgentId"
+        [options]="agentOptions()"
+        [placeholder]="'Seleccionar agente de ventas...'"
+        [noResultsText]="'No hay agentes disponibles'"
+        [disabled]="loadingAgents()"
+      >
+      </app-searchable-select>
+
+      <button
+        type="submit"
+        [disabled]="starting() || !form.customerId || !form.vehicleId || !form.salesAgentId"
+        class="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        <span *ngIf="starting()">Iniciando…</span>
+        <span *ngIf="!starting()">Iniciar flujo</span>
+      </button>
+    </form>
+  </section>
+
+  <section class="rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900/50 p-4">
+    <div class="mb-3 flex items-center justify-between">
+      <h2 class="text-sm font-medium text-slate-700 dark:text-slate-300">Ejecuciones recientes</h2>
+      <button
+        (click)="refresh()"
+        class="text-xs text-slate-500 dark:text-slate-500 underline hover:text-slate-700 dark:hover:text-slate-300"
+      >
+        Recargar
+      </button>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full border-collapse text-sm">
+        <thead>
+          <tr class="border-b border-slate-300 dark:border-slate-800 text-left">
+            <th class="pb-2 text-xs font-medium uppercase text-slate-500 dark:text-slate-500">ID de ejecución</th>
+            <th class="pb-2 text-xs font-medium uppercase text-slate-500 dark:text-slate-500">Cliente</th>
+            <th class="pb-2 text-xs font-medium uppercase text-slate-500 dark:text-slate-500">Estado</th>
+            <th class="pb-2 text-xs font-medium uppercase text-slate-500 dark:text-slate-500">Pasos</th>
+            <th class="pb-2 text-xs font-medium uppercase text-slate-500 dark:text-slate-500">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            *ngFor="let process of processes()"
+            class="border-b border-slate-200/50 dark:border-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800/30"
+          >
+            <td class="py-2 font-mono text-xs text-slate-500 dark:text-slate-400">{{ process.id }}</td>
+            <td class="py-2 text-slate-700 dark:text-slate-300">{{ process.customerId || '—' }}</td>
+            <td class="py-2"><app-status-badge [status]="process.status" /></td>
+            <td class="py-2 text-xs text-slate-500 dark:text-slate-500">{{ (process.steps || []).length }} pasos</td>
+            <td class="py-2">
+              <button
+                (click)="viewProcess(process.id)"
+                class="text-xs text-sky-600 dark:text-sky-400 underline hover:text-sky-800 dark:hover:text-sky-300"
+              >
+                Ver detalle
+              </button>
+            </td>
+          </tr>
+          <tr *ngIf="processes().length === 0">
+            <td colspan="5" class="py-4 text-center text-slate-500 dark:text-slate-600">
+              No hay ejecuciones todavía.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <p *ngIf="errorMessage()" class="text-sm text-red-500 dark:text-red-400">{{ errorMessage() }}</p>
+</div>

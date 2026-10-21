@@ -1,0 +1,11 @@
+<span
+  class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold"
+  [ngClass]="badgeClass()"
+>
+  <span
+    class="size-2 rounded-full transition-colors"
+    [ngClass]="dotClass()"
+    [class.animate-pulse]="isAnimated()"
+  ></span>
+  {{ status }}
+</span>
