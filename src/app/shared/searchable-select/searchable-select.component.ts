@@ -1,6 +1,7 @@
 import { Component, Input, Output, EventEmitter, signal, computed, input, ViewChild, ElementRef, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { IconComponent } from '../icon/icon.component';
 
 export interface SelectOption<T> {
   value: T;
@@ -11,7 +12,7 @@ export interface SelectOption<T> {
 @Component({
   selector: 'app-searchable-select',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, IconComponent],
   templateUrl: './searchable-select.component.html',
   host: {
     class: 'block w-full'

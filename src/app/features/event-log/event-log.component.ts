@@ -1,11 +1,12 @@
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FlowExecutionEvent } from '../../core/interfaces/process.models';
+import { IconComponent } from '../../shared/icon/icon.component';
 
 @Component({
   selector: 'app-event-log',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, IconComponent],
   templateUrl: './event-log.component.html',
   styleUrls: ['./event-log.component.css'],
 })
@@ -20,7 +21,7 @@ export class EventLogComponent {
     return index;
   }
 
-   eventBorderClass(eventType: string): string {
+  eventBorderClass(eventType: string): string {
     switch (eventType) {
       case 'STEP_COMPLETED': return 'border-green-500 dark:border-green-500';
       case 'STEP_FAILED': return 'border-red-500 dark:border-red-500';
@@ -45,6 +46,19 @@ export class EventLogComponent {
         return 'bg-sky-100 dark:bg-sky-900/20 text-sky-800 dark:text-sky-400 border border-sky-200 dark:border-sky-800';
       default:
         return 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700';
+    }
+  }
+
+  eventIconName(eventType: string): string {
+    switch (eventType) {
+      case 'STEP_COMPLETED':
+      case 'FLOW_COMPLETED':
+        return 'check';
+      case 'STEP_FAILED':
+      case 'FLOW_FAILED':
+        return 'exclamation-triangle';
+      default:
+        return 'clock';
     }
   }
 }

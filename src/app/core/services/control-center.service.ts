@@ -43,7 +43,14 @@ export class ControlCenterService {
     return this.http.get<ProcessExecutionResponse>(`${this.baseUrl}/processes/${id}`);
   }
 
-  getProcessSteps(id: string): Observable<ProcessExecutionStepResponse[]> {
+   getProcessSteps(id: string): Observable<ProcessExecutionStepResponse[]> {
     return this.http.get<ProcessExecutionStepResponse[]>(`${this.baseUrl}/processes/${id}/steps`);
+  }
+
+  retryProcess(id: string): Observable<ProcessExecutionResponse> {
+    return this.http.patch<ProcessExecutionResponse>(
+      `${this.baseUrl}/processes/${id}/status`,
+      { status: 'IN_PROGRESS', currentStep: '', errorMessage: '' }
+    );
   }
 }

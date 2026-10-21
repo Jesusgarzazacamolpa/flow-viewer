@@ -1,4 +1,4 @@
-import { Component, signal, inject, OnInit, computed, effect } from '@angular/core';
+import { Component, signal, inject, OnInit, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -11,11 +11,12 @@ import { Service } from '../../core/interfaces/service.interface';
 import { ProcessExecutionResponse } from '../../core/interfaces/process.models';
 import { StatusBadgeComponent } from '../status-badge/status-badge.component';
 import { SearchableSelectComponent } from '../../shared/searchable-select/searchable-select.component';
+import { IconComponent } from '../../shared/icon/icon.component';
 
 @Component({
   selector: 'app-flow-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, StatusBadgeComponent, SearchableSelectComponent],
+  imports: [CommonModule, FormsModule, StatusBadgeComponent, SearchableSelectComponent, IconComponent],
   templateUrl: './flow-dashboard.component.html',
   styleUrls: ['./flow-dashboard.component.css'],
 })
@@ -55,11 +56,12 @@ export class FlowDashboardComponent implements OnInit {
     searchText: `${c.fullName} ${c.email} ${c.identificationNumber ?? ''}`
   })));
 
+  // Fixed: removed duplicate brand
   protected vehicleOptions = computed(() => this.vehicles()
     .filter(v => v.available === true)
     .map(v => ({
       value: v.vehicle_id,
-      label: `${v.brand} ${v.model} ${v.price} - ${v.brand} - $${v.price.toLocaleString()}`,
+      label: `${v.brand} ${v.model} - $${v.price.toLocaleString()}`,
       searchText: `${v.brand} ${v.model}`
     }))
   );
@@ -82,74 +84,87 @@ export class FlowDashboardComponent implements OnInit {
     }))
   );
 
+  // Computed: can start process
+  protected canStart = computed(() => {
+    return !this.starting() &&
+           !!this.form.customerId &&
+           !!this.form.vehicleId &&
+           !!this.form.salesAgentId;
+  });
+
   ngOnInit(): void {
     this.refresh();
     this.loadDropdownData();
   }
 
-   loadDropdownData(): void {
-     // Load customers
-     this.loadingCustomers.set(true);
-     this.orchestrator.getActiveCustomers().subscribe({
-       next: (data) => {
-         // Handle potential different response formats
-         const customersData = data && Array.isArray(data.data) ? data.data : (data as any)?.items || [];
-         this.customers.set(customersData);
-         this.loadingCustomers.set(false);
-       },
-       error: (err) => {
-         this.loadingCustomers.set(false);
-         this.errorMessage.set('Error cargando clientes: ' + err.message);
-       }
-     });
+  loadDropdownData(): void {
+    // Error state per dropdown
+    const errors = {
+      customers: false,
+      vehicles: false,
+      agents: false,
+      services: false
+    };
 
-     // Load available vehicles
-     this.loadingVehicles.set(true);
-     this.orchestrator.getAvailableVehicles().subscribe({
-       next: (data) => {
-         // Handle potential different response formats
-         const vehiclesData = data && Array.isArray(data.data) ? data.data : (data as any)?.items || [];
-         this.vehicles.set(vehiclesData);
-         this.loadingVehicles.set(false);
-       },
-       error: (err) => {
-         this.loadingVehicles.set(false);
-         this.errorMessage.set('Error cargando vehículos: ' + err.message);
-       }
-     });
+    // Load customers
+    this.loadingCustomers.set(true);
+    this.orchestrator.getActiveCustomers().subscribe({
+      next: (data) => {
+        const customersData = data && Array.isArray(data?.data) ? data.data : (data as any)?.items || [];
+        this.customers.set(customersData);
+        this.loadingCustomers.set(false);
+      },
+      error: (err) => {
+        this.loadingCustomers.set(false);
+        this.errorMessage.set(`Error cargando clientes (${err.message})`);
+      }
+    });
 
-     // Load sales agents
-     this.loadingAgents.set(true);
-     this.orchestrator.getSalesAgents().subscribe({
-       next: (data) => {
-         // Handle potential different response formats
-         const agentsData = data && Array.isArray(data.data) ? data.data : (data as any)?.items || [];
-         this.agents.set(agentsData);
-         this.loadingAgents.set(false);
-       },
-       error: (err) => {
-         this.loadingAgents.set(false);
-         this.errorMessage.set('Error cargando agentes: ' + err.message);
-       }
-     });
+    // Load available vehicles
+    this.loadingVehicles.set(true);
+    this.orchestrator.getAvailableVehicles().subscribe({
+      next: (data) => {
+        const vehiclesData = data && Array.isArray(data?.data) ? data.data : (data as any)?.items || [];
+        this.vehicles.set(vehiclesData);
+        this.loadingVehicles.set(false);
+      },
+      error: (err) => {
+        this.loadingVehicles.set(false);
+        this.errorMessage.set(`Error cargando vehículos (${err.message})`);
+      }
+    });
 
-     // Load sales services
-     this.loadingServices.set(true);
-     this.orchestrator.getSalesServices().subscribe({
-       next: (data) => {
-         // Handle potential different response formats
-         const servicesData = Array.isArray(data) ? data : (data as any)?.items || [];
-         this.services.set(servicesData);
-         this.loadingServices.set(false);
-       },
-       error: (err) => {
-         this.loadingServices.set(false);
-         this.errorMessage.set('Error cargando servicios: ' + err.message);
-       }
-     });
-   }
+    // Load sales agents
+    this.loadingAgents.set(true);
+    this.orchestrator.getSalesAgents().subscribe({
+      next: (data) => {
+        const agentsData = data && Array.isArray(data?.data) ? data.data : (data as any)?.items || [];
+        this.agents.set(agentsData);
+        this.loadingAgents.set(false);
+      },
+      error: (err) => {
+        this.loadingAgents.set(false);
+        this.errorMessage.set(`Error cargando agentes (${err.message})`);
+      }
+    });
+
+    // Load sales services
+    this.loadingServices.set(true);
+    this.orchestrator.getSalesServices().subscribe({
+      next: (data) => {
+        const servicesData = Array.isArray(data) ? data : (data as any)?.items || [];
+        this.services.set(servicesData);
+        this.loadingServices.set(false);
+      },
+      error: (err) => {
+        this.loadingServices.set(false);
+        this.errorMessage.set(`Error cargando servicios (${err.message})`);
+      }
+    });
+  }
 
   refresh(): void {
+    this.errorMessage.set(null);
     this.controlCenter.listProcesses().subscribe({
       next: (data) => this.processes.set(data),
       error: (err) => this.errorMessage.set('Error al cargar ejecuciones: ' + err.message)
@@ -157,8 +172,9 @@ export class FlowDashboardComponent implements OnInit {
   }
 
   async onStart(): Promise<void> {
+    if (!this.canStart()) return;
+
     this.starting.set(true);
-    this.errorMessage.set(null);
 
     try {
       const template = await this.controlCenter.getDefaultTemplate().toPromise();
@@ -176,6 +192,13 @@ export class FlowDashboardComponent implements OnInit {
         return;
       }
 
+      // Reset form after successful start
+      this.form = {
+        flowId: 'compra-vehiculo',
+        customerId: '',
+        vehicleId: '',
+        salesAgentId: ''
+      };
       this.router.navigate(['/tracker', response.id]);
     } catch (err: any) {
       this.errorMessage.set('Error al iniciar el flujo: ' + (err?.message ?? err));

@@ -1,25 +1,45 @@
-<div class="space-y-6" *ngIf="process(); else loading">
+<div class="space-y-6">
   <header class="flex items-start justify-between gap-4">
-    <div>
-      <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100">Seguimiento de Proceso</h1>
-      <p class="text-sm text-slate-500 dark:text-slate-400">
-        ID: <span class="font-mono text-slate-600 dark:text-slate-400">{{ processId }}</span>
-      </p>
+    <div class="flex items-center gap-3">
+      <button
+        (click)="goBack()"
+        class="rounded-md p-1.5 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-700/50 transition-colors"
+        aria-label="Volver"
+      >
+        <app-icon name="arrow-left" size="sm" />
+      </button>
+      <div>
+        <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+          <app-icon name="eye" size="md" colorClass="text-sky-600 dark:text-sky-400" />
+          Seguimiento de Proceso
+        </h1>
+        <p class="text-sm text-slate-500 dark:text-slate-400">
+          ID: <span class="font-mono text-slate-600 dark:text-slate-400">{{ processId }}</span>
+        </p>
+      </div>
     </div>
-    <app-status-badge [status]="process()!.status" />
+    <ng-container *ngIf="process()">
+      <app-status-badge [status]="process()!.status" />
+    </ng-container>
   </header>
 
   <section class="grid gap-6 md:grid-cols-3">
     <div class="rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900/50 p-4">
-      <h3 class="mb-2 text-xs font-medium uppercase text-slate-500 dark:text-slate-500">Cliente</h3>
-      <p class="text-lg font-medium text-slate-800 dark:text-slate-200">{{ process()!.customerId || '—' }}</p>
+      <h3 class="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase text-slate-500 dark:text-slate-500">
+        <app-icon name="user" size="xs" /> Cliente
+      </h3>
+      <p class="text-lg font-medium text-slate-800 dark:text-slate-200">{{ process()?.customerId || '—' }}</p>
     </div>
     <div class="rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900/50 p-4">
-      <h3 class="mb-2 text-xs font-medium uppercase text-slate-500 dark:text-slate-500">Plantilla</h3>
-      <p class="text-lg font-medium text-slate-800 dark:text-slate-200">{{ process()!.processTemplateId }}</p>
+      <h3 class="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase text-slate-500 dark:text-slate-500">
+        <app-icon name="document-text" size="xs" /> Plantilla
+      </h3>
+      <p class="text-lg font-medium text-slate-800 dark:text-slate-200">{{ process()?.processTemplateId }}</p>
     </div>
     <div class="rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900/50 p-4">
-      <h3 class="mb-2 text-xs font-medium uppercase text-slate-500 dark:text-slate-500">Progreso</h3>
+      <h3 class="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase text-slate-500 dark:text-slate-500">
+        <app-icon name="chart-bar" size="xs" /> Progreso
+      </h3>
       <p class="text-lg font-medium text-slate-800 dark:text-slate-200">
         {{ completedSteps() }} / {{ totalSteps() }}
       </p>
@@ -28,14 +48,11 @@
 
   <section class="rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900/50 p-4">
     <div class="mb-3 flex items-center justify-between">
-      <h2 class="text-sm font-medium text-slate-700 dark:text-slate-300">Línea de tiempo de pasos</h2>
-      <span
-        class="text-xs"
-        [class.text-green-600]="allCompleted()"
-        [class.text-green-400]="allCompleted()"
-        [class.text-red-600]="hasFailed()"
-        [class.text-red-400]="hasFailed()"
-      >
+      <h2 class="mb-3 text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
+        <app-icon name="clock" size="sm" colorClass="text-slate-500 dark:text-slate-400" />
+        Línea de tiempo de pasos
+      </h2>
+      <span class="text-xs" [class.text-green-500]="allCompleted()" [class.text-red-500]="hasFailed()" [class.text-slate-500]="!allCompleted() && !hasFailed()">
         {{ progressLabel() }}
       </span>
     </div>
@@ -43,21 +60,34 @@
     <app-step-timeline [steps]="stepResponses()" />
   </section>
 
-  <section class="rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900/50 p-4">
-    <h2 class="mb-3 text-sm font-medium text-slate-700 dark:text-slate-300">Bitácora en tiempo real</h2>
-    <p *ngIf="!sse.isConnected()" class="mb-2 text-xs text-amber-600 dark:text-amber-400">
+  <section
+    *ngIf="isInProgress() || isFailed()"
+    class="rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900/50 p-4"
+  >
+    <div class="mb-3 flex items-center justify-between">
+      <h2 class="mb-3 text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
+        <app-icon name="book-open" size="sm" colorClass="text-slate-500 dark:text-slate-400" />
+        Bitácora en tiempo real
+      </h2>
+      <button
+        *ngIf="isFailed()"
+        (click)="retryProcess()"
+        [disabled]="!sse.isConnected()"
+        class="inline-flex items-center gap-1.5 rounded-md bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-700 transition-colors disabled:opacity-50"
+      >
+        <app-icon name="arrow-path" size="xs" />
+        Reintentar
+      </button>
+    </div>
+    <p *ngIf="!sse.isConnected()" class="mb-2 text-xs text-amber-400">
       Conexión SSE: {{ sse.error() || 'Conectando…' }}
     </p>
-    <p *ngIf="sse.isConnected()" class="mb-2 text-xs text-green-600 dark:text-green-400">
+    <p *ngIf="sse.isConnected()" class="mb-2 text-xs text-green-400">
       Conexión SSE activa — escuchando eventos…
     </p>
 
     <app-event-log [events]="sse.flowEvents()" />
   </section>
-</div>
 
-<ng-template #loading>
-  <div class="flex items-center justify-center py-12">
-    <p class="text-slate-600 dark:text-slate-400">Cargando información del proceso…</p>
-  </div>
-</ng-template>
+  <p *ngIf="error()" class="text-sm text-red-400">{{ error() }}</p>
+</div>

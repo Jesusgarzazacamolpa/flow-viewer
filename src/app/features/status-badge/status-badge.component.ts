@@ -1,10 +1,11 @@
 import { Component, Input, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { IconComponent } from '../../shared/icon/icon.component';
 
 @Component({
   selector: 'app-status-badge',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, IconComponent],
   templateUrl: './status-badge.component.html',
   styleUrls: ['./status-badge.component.css'],
 })
@@ -59,7 +60,14 @@ export class StatusBadgeComponent {
 
   private readonly animatedStatuses = new Set(['RUNNING', 'IN_PROGRESS', 'CREATED']);
 
-  isAnimated() {
-    return this.animatedStatuses.has(this._status());
-  }
+   isAnimated() {
+     return this.animatedStatuses.has(this._status());
+   }
+
+   statusIconName(): string {
+     const s = this._status();
+     if (s === 'COMPLETED' || s === 'SUCCESS' || s === 'SENT') return 'check';
+     if (s === 'FAILED' || s === 'ERROR') return 'exclamation-triangle';
+     return 'clock';
+   }
 }

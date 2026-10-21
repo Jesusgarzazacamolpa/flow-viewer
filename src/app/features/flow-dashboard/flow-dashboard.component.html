@@ -1,11 +1,17 @@
 <div class="space-y-6">
-  <header>
-    <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100">Flow Viewer — Bitácora de Procesos</h1>
-    <p class="text-sm text-slate-500 dark:text-slate-400">Control de ejecuciones de flujos de IA en tiempo real.</p>
-  </header>
+   <header>
+     <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+       <app-icon name="eye" size="md" colorClass="text-sky-600 dark:text-sky-400" />
+       Flow Viewer — Bitácora de Procesos
+     </h1>
+     <p class="text-sm text-slate-500 dark:text-slate-400">Control de ejecuciones de flujos de IA en tiempo real.</p>
+   </header>
 
   <section class="rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900/50 p-4">
-    <h2 class="mb-3 text-sm font-medium text-slate-700 dark:text-slate-300">Iniciar nuevo flujo</h2>
+      <h2 class="mb-3 text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
+        <app-icon name="plus" size="sm" colorClass="text-slate-500 dark:text-slate-400" />
+        Iniciar nuevo flujo
+      </h2>
     <form
       (ngSubmit)="onStart()"
       class="grid grid-cols-1 gap-3 sm:grid-cols-5"
@@ -48,24 +54,34 @@
       >
       </app-searchable-select>
 
-      <button
-        type="submit"
-        [disabled]="starting() || !form.customerId || !form.vehicleId || !form.salesAgentId"
-        class="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        <span *ngIf="starting()">Iniciando…</span>
-        <span *ngIf="!starting()">Iniciar flujo</span>
-      </button>
+        <button
+          type="submit"
+          [disabled]="!canStart()"
+          class="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-60 inline-flex items-center gap-2"
+        >
+          <app-icon name="plus" size="xs" />
+          <span *ngIf="starting()">Iniciando…</span>
+          <span *ngIf="!starting()">Iniciar flujo</span>
+        </button>
     </form>
+
+    <p *ngIf="!canStart() && !starting()" class="mt-2 text-xs text-slate-500 dark:text-slate-400">
+      Completa todos los campos para iniciar el flujo
+    </p>
   </section>
 
   <section class="rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900/50 p-4">
     <div class="mb-3 flex items-center justify-between">
-      <h2 class="text-sm font-medium text-slate-700 dark:text-slate-300">Ejecuciones recientes</h2>
+      <h2 class="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
+        <app-icon name="chart-bar" size="sm" colorClass="text-slate-500 dark:text-slate-400" />
+        Ejecuciones recientes
+      </h2>
       <button
         (click)="refresh()"
-        class="text-xs text-slate-500 dark:text-slate-500 underline hover:text-slate-700 dark:hover:text-slate-300"
+        [disabled]="starting()"
+        class="text-xs text-slate-500 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 disabled:opacity-50 inline-flex items-center gap-1.5"
       >
+        <app-icon name="arrow-path" size="xs" />
         Recargar
       </button>
     </div>
@@ -75,10 +91,10 @@
         <thead>
           <tr class="border-b border-slate-300 dark:border-slate-800 text-left">
             <th class="pb-2 text-xs font-medium uppercase text-slate-500 dark:text-slate-500">ID de ejecución</th>
-            <th class="pb-2 text-xs font-medium uppercase text-slate-500 dark:text-slate-500">Cliente</th>
-            <th class="pb-2 text-xs font-medium uppercase text-slate-500 dark:text-slate-500">Estado</th>
-            <th class="pb-2 text-xs font-medium uppercase text-slate-500 dark:text-slate-500">Pasos</th>
-            <th class="pb-2 text-xs font-medium uppercase text-slate-500 dark:text-slate-500">Acciones</th>
+            <th class="pb-2 text-xs font-medium uppercase text-slate-500 dark:text-slate-400">Cliente</th>
+            <th class="pb-2 text-xs font-medium uppercase text-slate-500 dark:text-slate-400">Estado</th>
+            <th class="pb-2 text-xs font-medium uppercase text-slate-500 dark:text-slate-400">Pasos</th>
+            <th class="pb-2 text-xs font-medium uppercase text-slate-500 dark:text-slate-400">Acciones</th>
           </tr>
         </thead>
         <tbody>
@@ -91,17 +107,18 @@
             <td class="py-2"><app-status-badge [status]="process.status" /></td>
             <td class="py-2 text-xs text-slate-500 dark:text-slate-500">{{ (process.steps || []).length }} pasos</td>
             <td class="py-2">
-              <button
-                (click)="viewProcess(process.id)"
-                class="text-xs text-sky-600 dark:text-sky-400 underline hover:text-sky-800 dark:hover:text-sky-300"
-              >
-                Ver detalle
-              </button>
+                <button
+                  (click)="viewProcess(process.id)"
+                  class="text-xs text-sky-600 dark:text-sky-400 hover:text-sky-800 dark:hover:text-sky-300 inline-flex items-center gap-1.5"
+                >
+                  <app-icon name="eye" size="xs" />
+                  Ver detalle
+                </button>
             </td>
           </tr>
           <tr *ngIf="processes().length === 0">
             <td colspan="5" class="py-4 text-center text-slate-500 dark:text-slate-600">
-              No hay ejecuciones todavía.
+              No hay ejecuciones todavía. Inicia un flujo para comenzar.
             </td>
           </tr>
         </tbody>

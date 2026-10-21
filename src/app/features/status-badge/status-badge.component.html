@@ -7,5 +7,10 @@
     [ngClass]="dotClass()"
     [class.animate-pulse]="isAnimated()"
   ></span>
+  <app-icon
+    [name]="statusIconName()"
+    size="xs"
+    colorClass="opacity-70"
+  />
   {{ status }}
 </span>
