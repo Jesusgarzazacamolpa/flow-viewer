@@ -20,6 +20,47 @@ export class StatusBadgeComponent {
     return this._status();
   }
 
+  readonly label = computed(() => {
+    switch (this._status()) {
+      case 'PENDING':
+        return 'Pendiente';
+      case 'RUNNING':
+        return 'En ejecución';
+      case 'IN_PROGRESS':
+        return 'En progreso';
+      case 'CREATED':
+        return 'Creado';
+      case 'COMPLETED':
+        return 'Completado';
+      case 'SUCCESS':
+        return 'Exitoso';
+      case 'SENT':
+        return 'Enviado';
+      case 'FAILED':
+        return 'Fallido';
+      case 'ERROR':
+        return 'Error';
+      case 'CANCELLED':
+        return 'Cancelado';
+      case 'PAUSED_FOR_HUMAN':
+        return 'Pausado para revisión';
+      case 'REQUIRES_INTERVENTION':
+        return 'Requiere intervención';
+      case 'PENDING_REVIEW':
+        return 'Pendiente de revisión';
+      case 'APPROVED':
+        return 'Aprobado';
+      case 'REJECTED':
+        return 'Rechazado';
+      case 'ACTIVE':
+        return 'Activo';
+      case 'INACTIVE':
+        return 'Inactivo';
+      default:
+        return 'Desconocido';
+    }
+  });
+
   readonly badgeClass = computed(() => {
     const s = this._status();
     switch (s) {

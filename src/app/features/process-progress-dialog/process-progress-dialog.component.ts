@@ -59,6 +59,8 @@ export class ProcessProgressDialogComponent implements OnInit, OnDestroy {
   private readonly injector = inject(Injector);
 
   readonly processId = input.required<string>();
+  readonly customerName = input<string | null>(null);
+  readonly templateName = input<string | null>(null);
   readonly closed = output<void>();
 
   protected readonly sse = inject(FlowSseService);

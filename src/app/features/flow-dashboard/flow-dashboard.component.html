@@ -27,16 +27,14 @@
 
     <form [formGroup]="form" (ngSubmit)="onStart()" class="grid grid-cols-1 gap-3 sm:grid-cols-5">
       <div>
-        <label for="flowId" class="sr-only">Identificador del flujo</label>
-        <input
-          id="flowId"
-          type="text"
+        <app-searchable-select
           formControlName="flowId"
-          placeholder="flowId (compra-vehiculo)"
-          class="w-full rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-800 placeholder-slate-500 focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-200 dark:placeholder-slate-600 dark:focus:border-sky-500"
+          [options]="flowOptions"
+          placeholder="Seleccionar flujo..."
+          noResultsText="No hay flujos disponibles"
         />
         @if (form.controls.flowId.invalid && form.controls.flowId.touched) {
-          <p class="mt-1 text-xs text-red-600 dark:text-red-400">El identificador del flujo es obligatorio.</p>
+          <p class="mt-1 text-xs text-red-600 dark:text-red-400">Selecciona un flujo para continuar.</p>
         }
       </div>
 
@@ -137,7 +135,7 @@
               class="border-b border-slate-200/50 hover:bg-slate-100 dark:border-slate-800/50 dark:hover:bg-slate-800/30"
             >
               <td class="py-2 font-mono text-xs text-slate-500 dark:text-slate-400">{{ process.id }}</td>
-              <td class="py-2 text-slate-700 dark:text-slate-300">{{ process.customerId || '—' }}</td>
+              <td class="py-2 text-slate-700 dark:text-slate-300">{{ customerNameFor(process.customerId) }}</td>
               <td class="py-2"><app-status-badge [status]="process.status" /></td>
               <td class="py-2 text-xs text-slate-500 dark:text-slate-500">
                 {{ (process.steps || []).length }} pasos
@@ -174,6 +172,8 @@
   @if (isDialogOpen()) {
     <app-process-progress-dialog
       [processId]="dialogProcessId()!"
+      [customerName]="dialogCustomerName()"
+      [templateName]="dialogTemplateName()"
       (closed)="onDialogClosed()"
     />
   }

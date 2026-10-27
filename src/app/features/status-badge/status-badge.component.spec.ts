@@ -16,7 +16,18 @@ describe('StatusBadgeComponent', () => {
     fixture.detectChanges();
 
     expect(component.status).toBe('COMPLETED');
-    expect(fixture.nativeElement.textContent).toContain('COMPLETED');
+    expect(fixture.nativeElement.textContent).toContain('Completado');
+  });
+
+  it('traduce el estado a una etiqueta legible', () => {
+    component.status = 'PAUSED_FOR_HUMAN';
+    expect(component.label()).toBe('Pausado para revisión');
+
+    component.status = 'IN_PROGRESS';
+    expect(component.label()).toBe('En progreso');
+
+    component.status = '';
+    expect(component.label()).toBe('Desconocido');
   });
 
   it.each([

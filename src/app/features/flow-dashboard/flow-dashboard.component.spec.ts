@@ -189,6 +189,14 @@ describe('FlowDashboardComponent', () => {
     expect(orchestrator['getSalesServices']).toHaveBeenCalledWith(true);
     expect(controlCenter['listProcesses']).toHaveBeenCalledWith(true);
     expect(fixture.nativeElement.textContent).toContain('p1');
+    expect(fixture.nativeElement.textContent).toContain('Ana Torres');
+  });
+
+  it('ofrece los flujos disponibles en un selector', () => {
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('input#flowId')).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('Compra de vehículo');
   });
 
   it('filtra vehículos, agentes y servicios disponibles', () => {
@@ -232,7 +240,11 @@ describe('FlowDashboardComponent', () => {
       salesAgentId: 'a1',
     });
     expect(notifications.toasts().some((toast) => toast.tone === 'success')).toBe(true);
-    expect(fixture.nativeElement.querySelector('app-process-progress-dialog')).not.toBeNull();
+
+    const dialog = fixture.nativeElement.querySelector('app-process-progress-dialog') as HTMLElement;
+    expect(dialog).not.toBeNull();
+    expect(dialog.textContent).toContain('Ana Torres');
+    expect(dialog.textContent).toContain('Compra de vehículo');
   });
 
   it('no inicia el flujo cuando la plantilla no está disponible', () => {
@@ -287,6 +299,10 @@ describe('FlowDashboardComponent', () => {
 
     expect(fixture.nativeElement.querySelector('app-process-progress-dialog')).not.toBeNull();
     expect(controlCenter['getProcess']).toHaveBeenCalledWith('p1', true);
+
+    const dialog = fixture.nativeElement.querySelector('app-process-progress-dialog') as HTMLElement;
+    expect(dialog.textContent).toContain('Ana Torres');
+    expect(dialog.textContent).toContain('Compra de vehículo');
   });
 
   it('informa los errores de cada catálogo del formulario', () => {

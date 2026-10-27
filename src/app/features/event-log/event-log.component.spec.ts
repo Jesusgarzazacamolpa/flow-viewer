@@ -40,7 +40,7 @@ describe('EventLogComponent', () => {
     fixture.detectChanges();
 
     const content = fixture.nativeElement.textContent;
-    expect(content).toContain('STEP_FAILED');
+    expect(content).toContain('Paso fallido');
     expect(content).toContain('Validar pago');
     expect(content).toContain('No pudimos validar el pago.');
   });
@@ -61,6 +61,12 @@ describe('EventLogComponent', () => {
     ['OTRO', 'border-slate-300'],
   ])('colorea el borde para %s', (type, expectedClass) => {
     expect(component.eventBorderClass(type)).toContain(expectedClass);
+  });
+
+  it('traduce el tipo de evento a una etiqueta legible', () => {
+    expect(component.eventTypeLabel('STEP_STARTED')).toBe('Paso iniciado');
+    expect(component.eventTypeLabel('FLOW_COMPLETED')).toBe('Flujo completado');
+    expect(component.eventTypeLabel('EVENTO_DESCONOCIDO')).toBe('EVENTO_DESCONOCIDO');
   });
 
   it('devuelve el índice como trackBy estable', () => {

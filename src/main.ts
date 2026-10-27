@@ -14,4 +14,4 @@ bootstrapApplication(AppComponent, {
     provideHttpClient(withInterceptors([httpErrorInterceptor])),
     provideZoneChangeDetection({ eventCoalescing: true }),
   ],
-}).catch((err) => console.error(err));
+}).catch((err) => console.error('Error al iniciar la aplicación:', err));

@@ -21,6 +21,22 @@ export class EventLogComponent {
     return index;
   }
 
+  eventTypeLabel(eventType: string): string {
+    switch (eventType) {
+      case 'STEP_STARTED': return 'Paso iniciado';
+      case 'STEP_COMPLETED': return 'Paso completado';
+      case 'STEP_FAILED': return 'Paso fallido';
+      case 'STEP_REQUIRES_INTERVENTION': return 'Paso requiere intervención';
+      case 'STEP_RETRY': return 'Reintento de paso';
+      case 'FLOW_STARTED': return 'Flujo iniciado';
+      case 'FLOW_COMPLETED': return 'Flujo completado';
+      case 'FLOW_FAILED': return 'Flujo fallido';
+      case 'FLOW_PAUSED': return 'Flujo pausado';
+      case 'FLOW_RESUMED': return 'Flujo reanudado';
+      default: return eventType;
+    }
+  }
+
   eventBorderClass(eventType: string): string {
     switch (eventType) {
       case 'STEP_COMPLETED': return 'border-green-500 dark:border-green-500';

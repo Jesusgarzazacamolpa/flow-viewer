@@ -10,6 +10,7 @@ import { Agent } from '../../core/interfaces/agent.interface';
 import { Customer } from '../../core/interfaces/customer.interface';
 import { Service } from '../../core/interfaces/service.interface';
 import { ProcessExecutionResponse } from '../../core/interfaces/process.models';
+import { DEFAULT_FLOW_ID, DEFAULT_TEMPLATE_NAME, FLOW_CATALOG } from '../../core/constants/flow-catalog';
 import { UserFacingError } from '../../core/models/api-error.model';
 import { toUserFacingError } from '../../core/interceptors/http-error.interceptor';
 import { StatusBadgeComponent } from '../status-badge/status-badge.component';
@@ -42,8 +43,13 @@ export class FlowDashboardComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly fb = inject(FormBuilder).nonNullable;
 
+  protected readonly flowOptions = FLOW_CATALOG.map((flow) => ({
+    value: flow.id,
+    label: flow.label,
+  }));
+
   protected readonly form = this.fb.group({
-    flowId: ['compra-vehiculo', [Validators.required, Validators.maxLength(80)]],
+    flowId: [DEFAULT_FLOW_ID, Validators.required],
     customerId: ['', Validators.required],
     vehicleId: ['', Validators.required],
     salesAgentId: ['', Validators.required],
@@ -64,6 +70,7 @@ export class FlowDashboardComponent implements OnInit {
 
   protected readonly dialogProcessId = signal<string | null>(null);
   protected readonly isDialogOpen = computed(() => this.dialogProcessId() !== null);
+  private readonly dialogSnapshot = signal<ProcessExecutionResponse | null>(null);
 
   protected readonly customers = signal<Customer[]>([]);
   protected readonly vehicles = signal<Vehicle[]>([]);
@@ -87,6 +94,31 @@ export class FlowDashboardComponent implements OnInit {
       searchText: `${customer.fullName} ${customer.email} ${customer.identificationNumber ?? ''}`,
     })),
   );
+
+  private readonly customerNameById = computed(
+    () => new Map(this.customers().map((customer) => [customer.id, customer.fullName])),
+  );
+
+  protected customerNameFor(customerId?: string | null): string {
+    if (!customerId) return '—';
+    return this.customerNameById().get(customerId) ?? customerId;
+  }
+
+  protected readonly dialogProcess = computed(() => {
+    const id = this.dialogProcessId();
+    if (!id) return null;
+    return this.processes().find((process) => process.id === id) ?? this.dialogSnapshot();
+  });
+
+  protected readonly dialogCustomerName = computed(() => {
+    const customerId = this.dialogProcess()?.customerId;
+    return customerId ? this.customerNameById().get(customerId) ?? null : null;
+  });
+
+  protected readonly dialogTemplateName = computed(() => {
+    const templateId = this.dialogProcess()?.processTemplateId;
+    return templateId && templateId === this.defaultTemplateId() ? DEFAULT_TEMPLATE_NAME : null;
+  });
 
   protected readonly vehicleOptions = computed(() =>
     this.vehicles()
@@ -242,6 +274,7 @@ export class FlowDashboardComponent implements OnInit {
         next: (response) => {
           this.resetForm();
           this.notifications.success('El flujo se inició correctamente. Puedes seguir su progreso en la bitácora.');
+          this.dialogSnapshot.set(response);
           this.dialogProcessId.set(response.id);
           this.refresh();
         },
@@ -253,10 +286,12 @@ export class FlowDashboardComponent implements OnInit {
 
   protected onDialogClosed(): void {
     this.dialogProcessId.set(null);
+    this.dialogSnapshot.set(null);
     this.refresh();
   }
 
   protected viewProcess(id: string): void {
+    this.dialogSnapshot.set(null);
     this.dialogProcessId.set(id);
   }
 
@@ -283,7 +318,7 @@ export class FlowDashboardComponent implements OnInit {
 
   private resetForm(): void {
     this.form.reset({
-      flowId: 'compra-vehiculo',
+      flowId: DEFAULT_FLOW_ID,
       customerId: '',
       vehicleId: '',
       salesAgentId: '',

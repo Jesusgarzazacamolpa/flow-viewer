@@ -117,6 +117,21 @@ describe('ProcessProgressDialogComponent', () => {
     expect(controlCenter['listInterventions']).not.toHaveBeenCalled();
   });
 
+  it('muestra el nombre del cliente y de la plantilla cuando se reciben', () => {
+    fixture.componentRef.setInput('customerName', 'Ana Torres');
+    fixture.componentRef.setInput('templateName', 'Compra de vehículo');
+    fixture.detectChanges();
+
+    const content = fixture.nativeElement.textContent;
+    expect(content).toContain('Ana Torres');
+    expect(content).toContain('Compra de vehículo');
+  });
+
+  it('usa los identificadores cuando no hay nombres disponibles', () => {
+    expect(fixture.nativeElement.textContent).toContain('c1');
+    expect(fixture.nativeElement.textContent).toContain('tpl-1');
+  });
+
   it('muestra la intervención pendiente del proceso y permite reanudarlo', () => {
     controlCenter['getProcess'].mockReturnValue(of(makeProcess({ status: 'PAUSED_FOR_HUMAN' })));
     controlCenter['listInterventions']
