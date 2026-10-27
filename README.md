@@ -50,7 +50,7 @@ Maneja:
 ### Modo Embedded
 Cuando recibe `{type: 'EMBEDDED', embedded: true}`:
 - Agrega clase `embedded` al `body`
-- Navbar desaparece (CSS: `body.embedded nav { display: none }`)
+- Navbar desaparece (CSS: `body.embedded .app-navbar { display: none }`)
 
 ## FlowDashboardComponent
 

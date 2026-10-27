@@ -30,7 +30,7 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-  body.embedded nav {
+  body.embedded .app-navbar {
     display: none;
   }
 }
