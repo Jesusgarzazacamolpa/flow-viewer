@@ -16,12 +16,46 @@
         <p class="text-sm text-slate-500 dark:text-slate-400">
           ID: <span class="font-mono text-slate-600 dark:text-slate-400">{{ processId }}</span>
         </p>
+        <p *ngIf="process()?.traceId" class="text-xs text-slate-400 dark:text-slate-500 font-mono">
+          Trace: {{ process()?.traceId }}
+        </p>
       </div>
     </div>
-    <ng-container *ngIf="process()">
-      <app-status-badge [status]="process()!.status" />
-    </ng-container>
+     <div class="flex items-center gap-2">
+        <button
+          (click)="refreshProcess()"
+          class="rounded-md p-1.5 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-700/50 transition-colors"
+          aria-label="Recargar"
+          title="Recargar"
+        >
+          <app-icon name="arrow-path" size="sm" />
+        </button>
+        <button
+          *ngIf="isFailed() || isPaused()"
+          (click)="showUserInput.set(true)"
+          [disabled]="actionPending()"
+          class="inline-flex items-center gap-1.5 rounded-md bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60 transition-colors"
+          [attr.aria-label]="isPaused() ? 'Reanudar proceso' : 'Reintentar proceso'"
+          [title]="isPaused() ? 'Reanudar proceso pausado' : 'Reintentar proceso'"
+        >
+          <app-icon name="arrow-path" size="xs" />
+          {{ isPaused() ? 'Reanudar' : 'Reintentar' }}
+        </button>
+        <ng-container *ngIf="process()">
+          <app-status-badge [status]="process()!.status" />
+        </ng-container>
+      </div>
   </header>
+
+  @if (error(); as loadError) {
+    <app-error-banner
+      title="No pudimos cargar el proceso"
+      [message]="loadError.message"
+      [reference]="loadError.reference"
+      retryLabel="Reintentar carga"
+      (retry)="refreshProcess()"
+    />
+  }
 
   <section class="grid gap-6 md:grid-cols-3">
     <div class="rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900/50 p-4">
@@ -57,37 +91,70 @@
       </span>
     </div>
 
-    <app-step-timeline [steps]="stepResponses()" />
-  </section>
+         <app-step-timeline [steps]="stepResponses()" (retryStep)="retryStep($event)" />
 
-  <section
-    *ngIf="isInProgress() || isFailed()"
-    class="rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900/50 p-4"
-  >
-    <div class="mb-3 flex items-center justify-between">
-      <h2 class="mb-3 text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
-        <app-icon name="book-open" size="sm" colorClass="text-slate-500 dark:text-slate-400" />
-        Bitácora en tiempo real
-      </h2>
-      <button
-        *ngIf="isFailed()"
-        (click)="retryProcess()"
-        [disabled]="!sse.isConnected()"
-        class="inline-flex items-center gap-1.5 rounded-md bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-700 transition-colors disabled:opacity-50"
-      >
-        <app-icon name="arrow-path" size="xs" />
-        Reintentar
-      </button>
-    </div>
-    <p *ngIf="!sse.isConnected()" class="mb-2 text-xs text-amber-400">
-      Conexión SSE: {{ sse.error() || 'Conectando…' }}
-    </p>
-    <p *ngIf="sse.isConnected()" class="mb-2 text-xs text-green-400">
-      Conexión SSE activa — escuchando eventos…
-    </p>
+        <div *ngIf="hasFailed()" class="mt-4 rounded-lg border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/20 p-4">
+          <h3 class="mb-2 flex items-center gap-2 text-sm font-medium text-red-900 dark:text-red-300">
+            <app-icon name="exclamation-circle" size="sm" colorClass="text-red-600 dark:text-red-400" />
+            {{ process()?.userErrorTitle || 'Error del proceso' }}
+          </h3>
+          <p class="text-sm text-red-800 dark:text-red-300 mb-3">
+            {{ process()?.userErrorMessage || process()?.errorMessage || 'Error desconocido' }}
+          </p>
+          <button
+            type="button"
+            (click)="retryProcess()"
+            [disabled]="actionPending()"
+            class="inline-flex items-center gap-1.5 rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60 transition-colors"
+          >
+            <app-icon name="arrow-path" size="xs" />
+            {{ actionPending() ? 'Reintentando…' : (process()?.userErrorActionLabel || 'Reintentar proceso') }}
+          </button>
+        </div>
 
-    <app-event-log [events]="sse.flowEvents()" />
-  </section>
+        <div *ngIf="isPaused()" class="mt-4 rounded-lg border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-900/20 p-4">
+          <h3 class="mb-2 flex items-center gap-2 text-sm font-medium text-amber-900 dark:text-amber-300">
+            <app-icon name="shield" size="sm" colorClass="text-amber-600 dark:text-amber-400" />
+            {{ process()?.userErrorTitle || 'Intervención requerida' }}
+          </h3>
+          <p class="text-sm text-amber-800 dark:text-amber-300">
+            {{ process()?.userErrorMessage || process()?.errorMessage || 'Se requiere intervención humana' }}
+          </p>
 
-  <p *ngIf="error()" class="text-sm text-red-400">{{ error() }}</p>
+          <div *ngIf="showUserInput()" class="mt-3">
+            <label class="block text-xs font-medium text-amber-700 dark:text-amber-300 mb-1">
+              Proporciona la información solicitada:
+            </label>
+            <textarea
+              [formControl]="userInputControl"
+              placeholder="Escribe aquí la información requerida..."
+              aria-label="Información requerida para reanudar el proceso"
+              class="w-full rounded border border-amber-300 dark:border-amber-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none"
+              rows="3"
+            ></textarea>
+            @if (userInputControl.touched && userInputControl.invalid) {
+              <p class="mt-1 text-xs text-amber-700 dark:text-amber-300">
+                Escribe la información solicitada para continuar.
+              </p>
+            }
+            <div class="flex items-center gap-2 mt-2">
+              <button
+                type="button"
+                (click)="submitUserInput()"
+                [disabled]="userInputValid() !== 'VALID' || actionPending()"
+                class="rounded-md bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-700 disabled:bg-amber-200 disabled:text-amber-400 disabled:cursor-not-allowed transition-colors"
+              >
+                <app-icon name="arrow-path" size="xs" />
+                {{ actionPending() ? 'Reanudando…' : 'Reanudar' }}
+              </button>
+              <button
+                (click)="showUserInput.set(false)"
+                class="rounded-md px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+               </section>
 </div>

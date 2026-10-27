@@ -51,6 +51,10 @@ export class IconComponent {
       path: 'M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z M6 6h.008v.008H6V6Z',
       defaultClass: 'text-slate-500 dark:text-slate-500',
     },
+    'exclamation-circle': {
+      path: 'M12 9v3.75m-9 0v-.75a9 9 0 1 1 18 0v.75m-9 3.75v.008m-.75-.008a.75.75 0 1 0 0 1.5.75.75 0 0 1-1.5 0Z',
+      defaultClass: 'text-red-500 dark:text-red-400',
+    },
     'arrow-path': {
       path: 'M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99',
       defaultClass: 'text-slate-500 dark:text-slate-500',
@@ -90,6 +94,18 @@ export class IconComponent {
     'magnifying-glass': {
       path: 'm21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z',
       defaultClass: 'text-slate-500 dark:text-slate-400',
+    },
+    shield: {
+      path: 'M12 2L3 6v10c0 4.97 3.43 9.24 8 10.77 4.57-1.53 8-5.8 8-10.77V6l-9-4Z',
+      defaultClass: 'text-amber-500 dark:text-amber-400',
+    },
+    'x-mark': {
+      path: 'M6 18 18 6M6 6l12 12',
+      defaultClass: 'text-slate-500 dark:text-slate-400',
+    },
+    'information-circle': {
+      path: 'm11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z',
+      defaultClass: 'text-sky-500 dark:text-sky-400',
     },
   };
 

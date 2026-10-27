@@ -30,11 +30,20 @@
             {{ event.stepName || event.toolName || '' }}
           </span>
           <p
-            *ngIf="event.errorMessage"
+            *ngIf="event.userErrorMessage"
+            class="mt-1 text-sm text-red-600 dark:text-red-400"
+          >
+            {{ event.userErrorMessage }}
+          </p>
+          <p
+            *ngIf="event.errorMessage && !event.userErrorMessage"
             class="mt-1 text-sm text-red-600 dark:text-red-400"
           >
             {{ event.errorMessage }}
           </p>
+          <span *ngIf="event.traceId" class="ml-2 text-xs text-slate-400 dark:text-slate-500 font-mono">
+            {{ event.traceId }}
+          </span>
         </div>
         <time
           class="whitespace-nowrap text-xs text-slate-500 dark:text-slate-600"

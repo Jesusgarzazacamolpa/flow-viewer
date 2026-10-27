@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { Vehicle } from '../interfaces/vehicle.interface';
@@ -6,79 +6,82 @@ import { Agent } from '../interfaces/agent.interface';
 import { Customer } from '../interfaces/customer.interface';
 import { Service } from '../interfaces/service.interface';
 import { ApiResponse, PaginatedResponse } from '../interfaces/common.interface';
+import { silentErrorOptions } from '../interceptors/http-error.interceptor';
+
+type QueryValue = string | number | boolean | undefined;
 
 @Injectable({ providedIn: 'root' })
 export class OrchestratorService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = '/api/orchestrator';
 
-  // Vehicles
-  getVehicles(params?: { page?: number; pageSize?: number; status?: string; search?: string }): Observable<PaginatedResponse<Vehicle>> {
-    const queryParams = new URLSearchParams();
-    if (params?.page) queryParams.set('page', params.page.toString());
-    if (params?.pageSize) queryParams.set('pageSize', params.pageSize.toString());
-    if (params?.status) queryParams.set('status', params.status);
-    if (params?.search) queryParams.set('search', params.search);
-    return this.http.get<PaginatedResponse<Vehicle>>(`${this.baseUrl}/vehicles?${queryParams.toString()}`);
+  getVehicles(
+    params: { page?: number; pageSize?: number; status?: string; search?: string } = {},
+    silentError = false,
+  ): Observable<PaginatedResponse<Vehicle>> {
+    return this.get('/vehicles', { ...params }, silentError);
   }
 
-  getAvailableVehicles(): Observable<ApiResponse<Vehicle[]>> {
-    return this.http.get<ApiResponse<Vehicle[]>>(`${this.baseUrl}/vehicles/available`);
+  getAvailableVehicles(silentError = false): Observable<ApiResponse<Vehicle[]>> {
+    return this.get('/vehicles/available', {}, silentError);
   }
 
-  // Agents
-  getAgents(params?: { page?: number; pageSize?: number; specialization?: string; isActive?: boolean; search?: string }): Observable<PaginatedResponse<Agent>> {
-    const queryParams = new URLSearchParams();
-    if (params?.page) queryParams.set('page', params.page.toString());
-    if (params?.pageSize) queryParams.set('pageSize', params.pageSize.toString());
-    if (params?.specialization) queryParams.set('specialization', params.specialization);
-    if (params?.isActive !== undefined) queryParams.set('isActive', params.isActive.toString());
-    if (params?.search) queryParams.set('search', params.search);
-    return this.http.get<PaginatedResponse<Agent>>(`${this.baseUrl}/agents?${queryParams.toString()}`);
+  getAgents(
+    params: { page?: number; pageSize?: number; specialization?: string; isActive?: boolean; search?: string } = {},
+    silentError = false,
+  ): Observable<PaginatedResponse<Agent>> {
+    return this.get('/agents', { ...params }, silentError);
   }
 
-  getActiveAgents(): Observable<Agent[]> {
-    return this.http.get<Agent[]>(`${this.baseUrl}/agents/active`);
+  getActiveAgents(silentError = false): Observable<Agent[]> {
+    return this.get('/agents/active', {}, silentError);
   }
 
-  getSalesAgents(): Observable<ApiResponse<Agent[]>> {
-    return this.http.get<ApiResponse<Agent[]>>(`${this.baseUrl}/agents/specialization/VENTAS_NUEVOS`);
+  getSalesAgents(silentError = false): Observable<ApiResponse<Agent[]>> {
+    return this.get('/agents/specialization/VENTAS_NUEVOS', {}, silentError);
   }
 
-  // Customers
-  getCustomers(params?: { page?: number; pageSize?: number; isActive?: boolean; search?: string }): Observable<PaginatedResponse<Customer>> {
-    const queryParams = new URLSearchParams();
-    if (params?.page) queryParams.set('page', params.page.toString());
-    if (params?.pageSize) queryParams.set('pageSize', params.pageSize.toString());
-    if (params?.isActive !== undefined) queryParams.set('isActive', params.isActive.toString());
-    if (params?.search) queryParams.set('search', params.search);
-    return this.http.get<PaginatedResponse<Customer>>(`${this.baseUrl}/customers?${queryParams.toString()}`);
+  getCustomers(
+    params: { page?: number; pageSize?: number; isActive?: boolean; search?: string } = {},
+    silentError = false,
+  ): Observable<PaginatedResponse<Customer>> {
+    return this.get('/customers', { ...params }, silentError);
   }
 
-  getActiveCustomers(): Observable<ApiResponse<Customer[]>> {
-    return this.http.get<ApiResponse<Customer[]>>(`${this.baseUrl}/customers/active`);
+  getActiveCustomers(silentError = false): Observable<ApiResponse<Customer[]>> {
+    return this.get('/customers/active', {}, silentError);
   }
 
-  searchCustomers(name: string): Observable<Customer[]> {
-    return this.http.get<Customer[]>(`${this.baseUrl}/customers/search?name=${encodeURIComponent(name)}`);
+  searchCustomers(name: string, silentError = false): Observable<Customer[]> {
+    return this.get('/customers/search', { name }, silentError);
   }
 
-  // Services
-  getServices(params?: { page?: number; pageSize?: number; category?: string; isActive?: boolean; search?: string }): Observable<PaginatedResponse<Service>> {
-    const queryParams = new URLSearchParams();
-    if (params?.page) queryParams.set('page', params.page.toString());
-    if (params?.pageSize) queryParams.set('pageSize', params.pageSize.toString());
-    if (params?.category) queryParams.set('category', params.category);
-    if (params?.isActive !== undefined) queryParams.set('isActive', params.isActive.toString());
-    if (params?.search) queryParams.set('search', params.search);
-    return this.http.get<PaginatedResponse<Service>>(`${this.baseUrl}/services?${queryParams.toString()}`);
+  getServices(
+    params: { page?: number; pageSize?: number; category?: string; isActive?: boolean; search?: string } = {},
+    silentError = false,
+  ): Observable<PaginatedResponse<Service>> {
+    return this.get('/services', { ...params }, silentError);
   }
 
-  getActiveServices(): Observable<Service[]> {
-    return this.http.get<Service[]>(`${this.baseUrl}/services/active`);
+  getActiveServices(silentError = false): Observable<Service[]> {
+    return this.get('/services/active', {}, silentError);
   }
 
-  getSalesServices(): Observable<ApiResponse<Service[]>> {
-    return this.http.get<ApiResponse<Service[]>>(`${this.baseUrl}/services/sales`);
+  getSalesServices(silentError = false): Observable<ApiResponse<Service[]>> {
+    return this.get('/services/sales', {}, silentError);
+  }
+
+  private get<T>(path: string, query: Record<string, QueryValue>, silentError: boolean): Observable<T> {
+    let params = new HttpParams();
+    Object.entries(query).forEach(([key, value]) => {
+      if (value !== undefined && value !== '') {
+        params = params.set(key, String(value));
+      }
+    });
+
+    return this.http.get<T>(`${this.baseUrl}${path}`, {
+      params,
+      ...(silentError ? silentErrorOptions() : {}),
+    });
   }
 }

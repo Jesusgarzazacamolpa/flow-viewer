@@ -1,72 +1,97 @@
 <div class="relative" #dropdownContainer>
   <button
+    #trigger
     type="button"
     (click)="toggleDropdown()"
-    [class.cursor-not-allowed.opacity-50]="disabled()"
-    class="w-full px-3 py-2 text-sm text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-800/50 border border-slate-300 dark:border-slate-700 rounded-md focus:outline-none flex items-center justify-between gap-2"
+    [disabled]="isDisabled()"
+    [attr.aria-expanded]="isOpen()"
+    aria-haspopup="listbox"
+    [attr.aria-controls]="isOpen() ? 'searchable-select-options' : null"
+    [class.cursor-not-allowed.opacity-50]="isDisabled()"
+    class="flex w-full items-center justify-between gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-left text-sm text-slate-800 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:cursor-not-allowed dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-200"
   >
-    <span class="truncate flex-1">
+    <span class="flex-1 truncate" [class.text-slate-400]="!selectedLabel()">
       {{ selectedLabel() || placeholder() }}
     </span>
-    <span class="w-4 h-4 text-slate-500 dark:text-slate-400 flex-shrink-0 transition-transform" [class.rotate-180]="isOpen()">
+    <span
+      class="h-4 w-4 flex-shrink-0 text-slate-500 transition-transform dark:text-slate-400"
+      [class.rotate-180]="isOpen()"
+    >
       <app-icon name="chevron-down" size="xs" />
     </span>
   </button>
 
-  <div *ngIf="isOpen()" class="absolute z-50 mt-1 w-full max-h-60 overflow-auto rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg">
-    <div class="p-2 border-b border-slate-200 dark:border-slate-700 relative">
-      <input
-        type="text"
-        [ngModel]="searchTerm()"
-        (ngModelChange)="searchTerm.set($event)"
-        (keydown.esc)="closeDropdown()"
-        (keydown.arrowDown)="focusFirstOption()"
-        placeholder="Buscar..."
-        class="w-full pl-9 pr-3 py-2 text-sm text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
-        aria-label="Filtrar opciones"
-      />
-      <app-icon
-        name="magnifying-glass"
-        size="sm"
-        colorClass="text-slate-500 dark:text-slate-400"
-        class="absolute left-2.5 top-1/2 -translate-y-1/2"
-      />
-    </div>
+  @if (errorText()) {
+    <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ errorText() }}</p>
+  }
 
-    <div class="max-h-48 overflow-auto">
-      <div *ngIf="filteredOptions().length === 0" class="px-3 py-2 text-sm text-slate-500 dark:text-slate-500 text-center">
-        {{ noResultsText() }}
-      </div>
-      <ul *ngIf="filteredOptions().length > 0" role="listbox" class="py-1">
-        <li
-          *ngFor="let option of filteredOptions(); trackBy: trackByValue"
-          role="option"
-          (click)="selectOption(option)"
-          (keydown.enter)="selectOption(option)"
-          (keydown.esc)="closeDropdown()"
-          [class.bg-sky-600]="isSelected(option)"
-          [class.text-white]="isSelected(option)"
-          class="px-3 py-2 text-sm cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex items-center gap-2"
-          tabindex="0"
-        >
-          <span class="truncate">{{ option.label }}</span>
-          <span *ngIf="isSelected(option)" class="w-4 h-4 flex-shrink-0 text-current">
-            <app-icon name="check" size="xs" />
-          </span>
-        </li>
-      </ul>
-    </div>
-
-    <button
-      *ngIf="showCreateOption()"
-      type="button"
-      (click)="createNew.emit(searchTerm())"
-      class="w-full px-3 py-2 text-sm text-sky-600 dark:text-sky-400 hover:text-sky-800 dark:hover:text-sky-300 flex items-center gap-2 border-t border-slate-200 dark:border-slate-700 pt-2"
+  @if (isOpen()) {
+    <div
+      class="absolute z-50 mt-1 w-full overflow-hidden rounded-md border border-slate-300 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900"
     >
-      <span class="w-4 h-4">
-        <app-icon name="plus" size="xs" colorClass="text-sky-600 dark:text-sky-400" />
-      </span>
-      Crear "{{ searchTerm() }}"
-    </button>
-  </div>
+      <div class="relative border-b border-slate-200 p-2 dark:border-slate-700">
+        <input
+          #searchInput
+          type="text"
+          [value]="searchTerm()"
+          (input)="searchTerm.set($any($event.target).value)"
+          (keydown.esc)="closeDropdown()"
+          (keydown.arrowDown)="focusFirstOption()"
+          placeholder="Buscar..."
+          class="w-full rounded-md border border-slate-300 bg-slate-50 py-2 pl-9 pr-3 text-sm text-slate-800 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+          aria-label="Filtrar opciones"
+        />
+        <app-icon
+          name="magnifying-glass"
+          size="sm"
+          colorClass="text-slate-500 dark:text-slate-400"
+          class="absolute left-2.5 top-1/2 -translate-y-1/2"
+        />
+      </div>
+
+      <div class="max-h-48 overflow-auto">
+        @if (filteredOptions().length === 0) {
+          <p class="px-3 py-2 text-center text-sm text-slate-500 dark:text-slate-500">
+            {{ noResultsText() }}
+          </p>
+        } @else {
+          <ul id="searchable-select-options" role="listbox" class="py-1">
+            @for (option of filteredOptions(); track option.value) {
+              <li
+                role="option"
+                (click)="selectOption(option)"
+                (keydown.enter)="selectOption(option)"
+                (keydown.esc)="closeDropdown()"
+                [attr.aria-selected]="isSelected(option)"
+                [class.bg-sky-600]="isSelected(option)"
+                [class.text-white]="isSelected(option)"
+                class="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm transition-colors hover:bg-slate-100 dark:hover:bg-slate-700"
+                tabindex="0"
+              >
+                <span class="truncate">{{ option.label }}</span>
+                @if (isSelected(option)) {
+                  <span class="h-4 w-4 flex-shrink-0 text-current">
+                    <app-icon name="check" size="xs" />
+                  </span>
+                }
+              </li>
+            }
+          </ul>
+        }
+      </div>
+
+      @if (showCreateOption()) {
+        <button
+          type="button"
+          (click)="onCreate()"
+          class="flex w-full items-center gap-2 border-t border-slate-200 px-3 py-2 pt-2 text-sm text-sky-600 hover:text-sky-800 dark:border-slate-700 dark:text-sky-400 dark:hover:text-sky-300"
+        >
+          <span class="h-4 w-4">
+            <app-icon name="plus" size="xs" colorClass="text-sky-600 dark:text-sky-400" />
+          </span>
+          Crear "{{ searchTerm() }}"
+        </button>
+      }
+    </div>
+  }
 </div>

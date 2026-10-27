@@ -46,8 +46,16 @@
           <p class="text-sm font-medium text-slate-800 dark:text-slate-200">{{ step.name }}</p>
           <p class="text-xs text-slate-500 dark:text-slate-500">Orden {{ step.stepOrder }}</p>
         </div>
-        <app-status-badge [status]="step.status" />
-      </div>
+      <app-status-badge [status]="step.status" />
+      <button
+        *ngIf="canRetry(step.status)"
+        (click)="retryStep.emit(step.stepOrder)"
+        class="rounded-md bg-red-600 px-2 py-1 text-xs font-medium text-white hover:bg-red-700 transition-colors"
+        title="Reintentar paso"
+      >
+        <app-icon name="arrow-path" size="xs" />
+      </button>
+    </div>
 
       <div
         *ngIf="step.errorMessage"

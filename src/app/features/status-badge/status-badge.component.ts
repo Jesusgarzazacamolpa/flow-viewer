@@ -34,6 +34,8 @@ export class StatusBadgeComponent {
         return 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400 border border-red-200 dark:border-red-800';
       case 'CANCELLED':
         return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-400 border border-gray-200 dark:border-gray-700';
+      case 'PAUSED_FOR_HUMAN':
+        return 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-400 border border-amber-200 dark:border-amber-800';
       default:
         return 'bg-sky-100 dark:bg-sky-900/30 text-sky-800 dark:text-sky-400 border border-sky-200 dark:border-sky-800';
     }
@@ -53,6 +55,8 @@ export class StatusBadgeComponent {
         return 'bg-red-600 dark:bg-red-400';
       case 'CANCELLED':
         return 'bg-gray-500';
+      case 'PAUSED_FOR_HUMAN':
+        return 'bg-amber-600 dark:bg-amber-400';
       default:
         return 'bg-sky-600 dark:bg-sky-400';
     }
@@ -68,6 +72,7 @@ export class StatusBadgeComponent {
      const s = this._status();
      if (s === 'COMPLETED' || s === 'SUCCESS' || s === 'SENT') return 'check';
      if (s === 'FAILED' || s === 'ERROR') return 'exclamation-triangle';
+     if (s === 'PAUSED_FOR_HUMAN') return 'shield';
      return 'clock';
    }
 }

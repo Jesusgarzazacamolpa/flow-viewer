@@ -1,6 +1,16 @@
-import { Component, Input, Output, EventEmitter, signal, computed, input, ViewChild, ElementRef, HostListener } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  HostListener,
+  computed,
+  forwardRef,
+  input,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { IconComponent } from '../icon/icon.component';
 
 export interface SelectOption<T> {
@@ -12,102 +22,138 @@ export interface SelectOption<T> {
 @Component({
   selector: 'app-searchable-select',
   standalone: true,
-  imports: [CommonModule, FormsModule, IconComponent],
+  imports: [CommonModule, IconComponent],
   templateUrl: './searchable-select.component.html',
   host: {
-    class: 'block w-full'
-  }
+    class: 'block w-full',
+  },
+  providers: [
+    {
+      provide: NG_VALUE_ACCESSOR,
+      useExisting: forwardRef(() => SearchableSelectComponent),
+      multi: true,
+    },
+  ],
 })
-export class SearchableSelectComponent<T> {
+export class SearchableSelectComponent<T> implements ControlValueAccessor {
   readonly options = input<SelectOption<T>[]>([]);
   readonly placeholder = input('Seleccionar...');
   readonly searchKey = input<keyof SelectOption<T>>();
   readonly noResultsText = input('No se encontraron resultados');
+  readonly errorText = input<string | null>(null);
   readonly allowCreate = input(false);
   readonly disabled = input(false);
+  readonly createNew = output<string>();
 
-  /** Internal signal holding the current selected value */
-  private readonly _selectedValue = signal<T | undefined>(undefined);
-  readonly selectedValue = this._selectedValue.asReadonly();
-
-  /**
-   * Input value — updates internal state and stays in sync with parent two-way binding.
-   */
-  @Input()
-  set value(val: T | undefined) {
-    this._selectedValue.set(val);
-  }
-  get value(): T | undefined {
-    return this._selectedValue();
-  }
-
-  @Output() valueChange = new EventEmitter<T>();
-  @Output() createNew = new EventEmitter<string>();
-
-  @ViewChild('dropdownContainer') dropdownContainer!: ElementRef<HTMLDivElement>;
-
+  private readonly selectedValue = signal<T | undefined>(undefined);
+  protected readonly formDisabled = signal(false);
   protected readonly searchTerm = signal('');
   protected readonly isOpen = signal(false);
 
+  private readonly trigger = viewChild<ElementRef<HTMLButtonElement>>('trigger');
+  private readonly dropdownContainer = viewChild<ElementRef<HTMLDivElement>>('dropdownContainer');
+  private readonly searchInput = viewChild<ElementRef<HTMLInputElement>>('searchInput');
+
+  protected readonly isDisabled = computed(() => this.disabled() || this.formDisabled());
+
   protected readonly filteredOptions = computed(() => {
     const term = this.searchTerm().trim().toLowerCase();
-    const opts = this.options();
+    const options = this.options();
     if (!term) {
-      return opts;
+      return options;
     }
     const key = this.searchKey();
-    return opts.filter(opt =>
-      key ? String(opt[key]).toLowerCase().includes(term) : opt.label.toLowerCase().includes(term)
+    return options.filter((option) =>
+      key
+        ? String(option[key]).toLowerCase().includes(term)
+        : `${option.label} ${option.searchText ?? ''}`.toLowerCase().includes(term),
     );
   });
 
-  protected readonly showCreateOption = computed(() => this.allowCreate() && this.searchTerm().trim().length > 0);
+  protected readonly showCreateOption = computed(
+    () => this.allowCreate() && this.searchTerm().trim().length > 0,
+  );
 
   protected readonly selectedLabel = computed(() => {
-    const v = this._selectedValue();
-    if (v === undefined) return '';
-    const opt = this.options().find(o => o.value === v);
-    return opt?.label ?? '';
+    const value = this.selectedValue();
+    if (value === undefined) return '';
+    return this.options().find((option) => option.value === value)?.label ?? '';
   });
 
-  protected isSelected(option: SelectOption<T>): boolean {
-    return option.value === this._selectedValue();
+  private onChange: (value: T) => void = () => {};
+  private onTouched: () => void = () => {};
+
+  writeValue(value: T | null | undefined): void {
+    this.selectedValue.set(value ?? undefined);
   }
 
-  toggleDropdown(): void {
-    if (this.disabled()) return;
-    this.isOpen.update(open => !open);
+  registerOnChange(fn: (value: T) => void): void {
+    this.onChange = fn;
+  }
+
+  registerOnTouched(fn: () => void): void {
+    this.onTouched = fn;
+  }
+
+  setDisabledState(isDisabled: boolean): void {
+    this.formDisabled.set(isDisabled);
+  }
+
+  protected isSelected(option: SelectOption<T>): boolean {
+    return option.value === this.selectedValue();
+  }
+
+  protected toggleDropdown(): void {
+    if (this.isDisabled()) return;
+    this.isOpen.update((open) => !open);
     if (this.isOpen()) {
       this.searchTerm.set('');
+      setTimeout(() => this.searchInput()?.nativeElement.focus());
+    } else {
+      this.onTouched();
     }
   }
 
-  closeDropdown(): void {
+  protected closeDropdown(): void {
+    if (!this.isOpen()) return;
     this.isOpen.set(false);
     this.searchTerm.set('');
+    this.onTouched();
   }
 
-   selectOption(option: SelectOption<T>): void {
-     this._selectedValue.set(option.value);
-     this.valueChange.emit(option.value);
-     this.closeDropdown();
-   }
+  protected selectOption(option: SelectOption<T>): void {
+    this.selectedValue.set(option.value);
+    this.onChange(option.value);
+    this.isOpen.set(false);
+    this.searchTerm.set('');
+    this.onTouched();
+    setTimeout(() => this.trigger()?.nativeElement.focus());
+  }
 
-  focusFirstOption(): void {
+  protected focusFirstOption(): void {
     setTimeout(() => {
-      const firstOption = document.querySelector('[role="option"]') as HTMLElement | null;
+      const firstOption = this.dropdownContainer()?.nativeElement.querySelector<HTMLElement>('[role="option"]');
       firstOption?.focus();
     });
   }
 
+  protected onCreate(): void {
+    this.createNew.emit(this.searchTerm());
+    this.closeDropdown();
+  }
+
   @HostListener('document:click', ['$event'])
-  onDocumentClick(event: MouseEvent): void {
-    if (!this.dropdownContainer?.nativeElement.contains(event.target as Node)) {
+  protected onDocumentClick(event: MouseEvent): void {
+    if (!this.dropdownContainer()?.nativeElement.contains(event.target as Node)) {
       this.closeDropdown();
     }
   }
 
-  trackByValue(index: number, option: SelectOption<T>): T {
-    return option.value;
+  @HostListener('document:keydown.escape')
+  protected onEscape(): void {
+    if (this.isOpen()) {
+      this.closeDropdown();
+      this.trigger()?.nativeElement.focus();
+    }
   }
 }

@@ -1,96 +1,130 @@
 <div class="space-y-6">
-   <header>
-     <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-       <app-icon name="eye" size="md" colorClass="text-sky-600 dark:text-sky-400" />
-       Flow Viewer — Bitácora de Procesos
-     </h1>
-     <p class="text-sm text-slate-500 dark:text-slate-400">Control de ejecuciones de flujos de IA en tiempo real.</p>
-   </header>
+  <header>
+    <h1 class="flex items-center gap-2 text-2xl font-bold text-slate-900 dark:text-slate-100">
+      <app-icon name="eye" size="md" colorClass="text-sky-600 dark:text-sky-400" />
+      Flow Viewer — Bitácora de Procesos
+    </h1>
+    <p class="text-sm text-slate-500 dark:text-slate-400">
+      Control de ejecuciones de flujos de IA en tiempo real.
+    </p>
+  </header>
 
-  <section class="rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900/50 p-4">
-      <h2 class="mb-3 text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
-        <app-icon name="plus" size="sm" colorClass="text-slate-500 dark:text-slate-400" />
-        Iniciar nuevo flujo
-      </h2>
-    <form
-      (ngSubmit)="onStart()"
-      class="grid grid-cols-1 gap-3 sm:grid-cols-5"
-    >
-      <input
-        type="text"
-        placeholder="flowId (compra-vehiculo)"
-        [(ngModel)]="form.flowId"
-        name="flowId"
-        class="rounded-md border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-3 py-2 text-sm text-slate-800 dark:text-slate-200 placeholder-slate-500 dark:placeholder-slate-600 focus:border-sky-500 dark:focus:border-sky-500 focus:outline-none"
+  @if (formDataError(); as error) {
+    <app-error-banner
+      title="No pudimos cargar los datos del formulario"
+      [message]="error.message"
+      [reference]="error.reference"
+      retryLabel="Reintentar carga"
+      (retry)="loadFormData()"
+    />
+  }
+
+  <section class="rounded-xl border border-slate-300 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/50">
+    <h2 class="mb-3 flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+      <app-icon name="plus" size="sm" colorClass="text-slate-500 dark:text-slate-400" />
+      Iniciar nuevo flujo
+    </h2>
+
+    <form [formGroup]="form" (ngSubmit)="onStart()" class="grid grid-cols-1 gap-3 sm:grid-cols-5">
+      <div>
+        <label for="flowId" class="sr-only">Identificador del flujo</label>
+        <input
+          id="flowId"
+          type="text"
+          formControlName="flowId"
+          placeholder="flowId (compra-vehiculo)"
+          class="w-full rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-800 placeholder-slate-500 focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-200 dark:placeholder-slate-600 dark:focus:border-sky-500"
+        />
+        @if (form.controls.flowId.invalid && form.controls.flowId.touched) {
+          <p class="mt-1 text-xs text-red-600 dark:text-red-400">El identificador del flujo es obligatorio.</p>
+        }
+      </div>
+
+      <app-searchable-select
+        formControlName="customerId"
+        [options]="customerOptions()"
+        placeholder="Seleccionar cliente..."
+        noResultsText="No se encontraron clientes"
+        [errorText]="customerLoadError()"
+        [disabled]="loadingCustomers()"
       />
 
       <app-searchable-select
-        name="customerId"
-        [(value)]="form.customerId"
-        [options]="customerOptions()"
-        [placeholder]="'Seleccionar cliente...'"
-        [noResultsText]="'No se encontraron clientes'"
-        [disabled]="loadingCustomers()"
-      >
-      </app-searchable-select>
-
-      <app-searchable-select
-        name="vehicleId"
-        [(value)]="form.vehicleId"
+        formControlName="vehicleId"
         [options]="vehicleOptions()"
-        [placeholder]="'Seleccionar vehículo disponible...'"
-        [noResultsText]="'No hay vehículos disponibles'"
+        placeholder="Seleccionar vehículo disponible..."
+        noResultsText="No hay vehículos disponibles"
+        [errorText]="vehicleLoadError()"
         [disabled]="loadingVehicles()"
-      >
-      </app-searchable-select>
+      />
 
       <app-searchable-select
-        name="salesAgentId"
-        [(value)]="form.salesAgentId"
+        formControlName="salesAgentId"
         [options]="agentOptions()"
-        [placeholder]="'Seleccionar agente de ventas...'"
-        [noResultsText]="'No hay agentes disponibles'"
+        placeholder="Seleccionar agente de ventas..."
+        noResultsText="No hay agentes disponibles"
+        [errorText]="agentLoadError()"
         [disabled]="loadingAgents()"
-      >
-      </app-searchable-select>
+      />
 
-        <button
-          type="submit"
-          [disabled]="!canStart()"
-          class="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-60 inline-flex items-center gap-2"
-        >
-          <app-icon name="plus" size="xs" />
-          <span *ngIf="starting()">Iniciando…</span>
-          <span *ngIf="!starting()">Iniciar flujo</span>
-        </button>
+      <button
+        type="submit"
+        [disabled]="!canStart()"
+        class="inline-flex items-center justify-center gap-2 rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        <app-icon name="plus" size="xs" />
+        @if (starting()) {
+          <span>Iniciando…</span>
+        } @else {
+          <span>Iniciar flujo</span>
+        }
+      </button>
     </form>
 
-    <p *ngIf="!canStart() && !starting()" class="mt-2 text-xs text-slate-500 dark:text-slate-400">
-      Completa todos los campos para iniciar el flujo
-    </p>
+    @if (startHint(); as hint) {
+      <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">{{ hint }}</p>
+    }
+
+    @if (serviceLoadError(); as serviceError) {
+      <p class="mt-2 text-xs text-red-600 dark:text-red-400">{{ serviceError }}</p>
+    }
   </section>
 
-  <section class="rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900/50 p-4">
+  <section class="rounded-xl border border-slate-300 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/50">
     <div class="mb-3 flex items-center justify-between">
-      <h2 class="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
+      <h2 class="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
         <app-icon name="chart-bar" size="sm" colorClass="text-slate-500 dark:text-slate-400" />
         Ejecuciones recientes
       </h2>
       <button
+        type="button"
         (click)="refresh()"
-        [disabled]="starting()"
-        class="text-xs text-slate-500 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 disabled:opacity-50 inline-flex items-center gap-1.5"
+        [disabled]="loadingProcesses()"
+        class="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700 disabled:opacity-50 dark:text-slate-500 dark:hover:text-slate-300"
       >
         <app-icon name="arrow-path" size="xs" />
-        Recargar
+        {{ loadingProcesses() ? 'Cargando…' : 'Recargar' }}
       </button>
     </div>
+
+    @if (listError(); as error) {
+      <div class="mb-3">
+        <app-error-banner
+          title="No pudimos cargar las ejecuciones"
+          [message]="error.message"
+          [reference]="error.reference"
+          (retry)="refresh()"
+        />
+      </div>
+    }
 
     <div class="overflow-x-auto">
       <table class="w-full border-collapse text-sm">
         <thead>
-          <tr class="border-b border-slate-300 dark:border-slate-800 text-left">
-            <th class="pb-2 text-xs font-medium uppercase text-slate-500 dark:text-slate-500">ID de ejecución</th>
+          <tr class="border-b border-slate-300 text-left dark:border-slate-800">
+            <th class="pb-2 text-xs font-medium uppercase text-slate-500 dark:text-slate-500">
+              ID de ejecución
+            </th>
             <th class="pb-2 text-xs font-medium uppercase text-slate-500 dark:text-slate-400">Cliente</th>
             <th class="pb-2 text-xs font-medium uppercase text-slate-500 dark:text-slate-400">Estado</th>
             <th class="pb-2 text-xs font-medium uppercase text-slate-500 dark:text-slate-400">Pasos</th>
@@ -98,33 +132,49 @@
           </tr>
         </thead>
         <tbody>
-          <tr
-            *ngFor="let process of processes()"
-            class="border-b border-slate-200/50 dark:border-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800/30"
-          >
-            <td class="py-2 font-mono text-xs text-slate-500 dark:text-slate-400">{{ process.id }}</td>
-            <td class="py-2 text-slate-700 dark:text-slate-300">{{ process.customerId || '—' }}</td>
-            <td class="py-2"><app-status-badge [status]="process.status" /></td>
-            <td class="py-2 text-xs text-slate-500 dark:text-slate-500">{{ (process.steps || []).length }} pasos</td>
-            <td class="py-2">
+          @for (process of processes(); track process.id) {
+            <tr
+              class="border-b border-slate-200/50 hover:bg-slate-100 dark:border-slate-800/50 dark:hover:bg-slate-800/30"
+            >
+              <td class="py-2 font-mono text-xs text-slate-500 dark:text-slate-400">{{ process.id }}</td>
+              <td class="py-2 text-slate-700 dark:text-slate-300">{{ process.customerId || '—' }}</td>
+              <td class="py-2"><app-status-badge [status]="process.status" /></td>
+              <td class="py-2 text-xs text-slate-500 dark:text-slate-500">
+                {{ (process.steps || []).length }} pasos
+              </td>
+              <td class="py-2">
                 <button
+                  type="button"
                   (click)="viewProcess(process.id)"
-                  class="text-xs text-sky-600 dark:text-sky-400 hover:text-sky-800 dark:hover:text-sky-300 inline-flex items-center gap-1.5"
+                  class="inline-flex items-center gap-1.5 text-xs text-sky-600 hover:text-sky-800 dark:text-sky-400 dark:hover:text-sky-300"
                 >
                   <app-icon name="eye" size="xs" />
                   Ver detalle
                 </button>
-            </td>
-          </tr>
-          <tr *ngIf="processes().length === 0">
-            <td colspan="5" class="py-4 text-center text-slate-500 dark:text-slate-600">
-              No hay ejecuciones todavía. Inicia un flujo para comenzar.
-            </td>
-          </tr>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="5" class="py-4 text-center text-slate-500 dark:text-slate-600">
+                @if (loadingProcesses()) {
+                  Cargando ejecuciones…
+                } @else if (listError()) {
+                  Vuelve a intentarlo con el botón de reintento.
+                } @else {
+                  No hay ejecuciones todavía. Inicia un flujo para comenzar.
+                }
+              </td>
+            </tr>
+          }
         </tbody>
       </table>
     </div>
   </section>
 
-  <p *ngIf="errorMessage()" class="text-sm text-red-500 dark:text-red-400">{{ errorMessage() }}</p>
+  @if (isDialogOpen()) {
+    <app-process-progress-dialog
+      [processId]="dialogProcessId()!"
+      (closed)="onDialogClosed()"
+    />
+  }
 </div>

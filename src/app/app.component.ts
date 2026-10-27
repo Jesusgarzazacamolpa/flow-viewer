@@ -1,12 +1,19 @@
-import { Component, inject, computed, AfterViewInit, OnDestroy } from '@angular/core';
-import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
-import { CommonModule } from '@angular/common';
-import { ThemeService } from './core/services/theme.service';
+import { Component, inject, computed, signal, AfterViewInit, OnDestroy } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
+import { ThemeService, Theme } from './core/services/theme.service';
+import { ToastContainerComponent } from './shared/toast/toast-container.component';
+
+interface PortalMessage {
+  type?: string;
+  embedded?: boolean;
+  token?: string;
+  theme?: Theme;
+}
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, ToastContainerComponent],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css'],
 })
@@ -19,47 +26,55 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 
   readonly themeIcon = computed(() => (this.isDark() ? '☀️' : '🌙'));
 
-  private isEmbedded = false;
+  protected readonly isEmbedded = signal(false);
 
-  private messageHandler = (event: MessageEvent) => {
+  private readonly messageHandler = (event: MessageEvent<PortalMessage | null>) => {
     const data = event.data;
-    if (!data) return;
-    if (data.type === 'EMBEDDED' || (data.type === 'AUTH_TOKEN' && data.embedded !== undefined)) {
-      this.isEmbedded = data.embedded === true || (data.type === 'EMBEDDED' && data.embedded === true);
-      if (this.isEmbedded) {
-        document.body.classList.add('embedded');
-      } else {
-        document.body.classList.remove('embedded');
+    if (!data || typeof data !== 'object') return;
+
+    if (data.type === 'EMBEDDED') {
+      this.setEmbedded(data.embedded === true);
+    }
+
+    if (data.type === 'AUTH_TOKEN') {
+      if (data.embedded !== undefined) {
+        this.setEmbedded(data.embedded === true);
       }
-    }
-    if (data.type === 'THEME_CHANGE' && data.theme) {
-      this.themeService.setTheme(data.theme);
-    }
-    if (data.type === 'AUTH_TOKEN' && data.token) {
-      localStorage.setItem('auth_token', data.token);
+      if (typeof data.token === 'string' && data.token) {
+        localStorage.setItem('auth_token', data.token);
+      }
       this.notifyParentReady();
+    }
+
+    if (data.type === 'THEME_CHANGE' && (data.theme === 'dark' || data.theme === 'light')) {
+      this.themeService.setTheme(data.theme);
     }
   };
 
-  notifyParentReady = () => {
+  private setEmbedded(embedded: boolean): void {
+    this.isEmbedded.set(embedded);
+    document.body.classList.toggle('embedded', embedded);
+  }
+
+  protected notifyParentReady = () => {
     const token = localStorage.getItem('auth_token');
-    if (this.isEmbedded && token) {
+    if (this.isEmbedded() && token) {
       window.parent.postMessage({ type: 'IFRAME_READY', token }, '*');
     } else {
       window.parent.postMessage({ type: 'IFRAME_READY' }, '*');
     }
   };
 
-  toggleTheme(): void {
+  protected toggleTheme(): void {
     this.themeService.toggle();
   }
 
-  ngAfterViewInit() {
+  ngAfterViewInit(): void {
     window.addEventListener('message', this.messageHandler);
     this.notifyParentReady();
   }
 
-  ngOnDestroy() {
+  ngOnDestroy(): void {
     window.removeEventListener('message', this.messageHandler);
   }
 }

@@ -29,6 +29,9 @@ export class EventLogComponent {
       case 'FLOW_FAILED': return 'border-red-500 dark:border-red-500';
       case 'STEP_STARTED': return 'border-sky-500 dark:border-sky-500';
       case 'FLOW_STARTED': return 'border-sky-500 dark:border-sky-500';
+      case 'STEP_REQUIRES_INTERVENTION': return 'border-amber-500 dark:border-amber-500';
+      case 'FLOW_PAUSED': return 'border-amber-500 dark:border-amber-500';
+      case 'FLOW_RESUMED': return 'border-sky-500 dark:border-sky-500';
       default: return 'border-slate-300 dark:border-slate-700';
     }
   }
@@ -44,6 +47,11 @@ export class EventLogComponent {
       case 'STEP_STARTED':
       case 'FLOW_STARTED':
         return 'bg-sky-100 dark:bg-sky-900/20 text-sky-800 dark:text-sky-400 border border-sky-200 dark:border-sky-800';
+      case 'STEP_REQUIRES_INTERVENTION':
+      case 'FLOW_PAUSED':
+        return 'bg-amber-100 dark:bg-amber-900/20 text-amber-800 dark:text-amber-400 border border-amber-200 dark:border-amber-800';
+      case 'FLOW_RESUMED':
+        return 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-400 border border-blue-200 dark:border-blue-800';
       default:
         return 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700';
     }
@@ -57,6 +65,11 @@ export class EventLogComponent {
       case 'STEP_FAILED':
       case 'FLOW_FAILED':
         return 'exclamation-triangle';
+      case 'STEP_REQUIRES_INTERVENTION':
+      case 'FLOW_PAUSED':
+        return 'shield';
+      case 'FLOW_RESUMED':
+        return 'arrow-path';
       default:
         return 'clock';
     }

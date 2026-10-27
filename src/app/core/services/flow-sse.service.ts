@@ -1,60 +1,150 @@
 import { Injectable, signal } from '@angular/core';
 import { FlowExecutionEvent } from '../interfaces/process.models';
 
+const RETRY_DELAYS_MS = [2000, 4000, 8000, 16000, 30000] as const;
+
 @Injectable({ providedIn: 'root' })
 export class FlowSseService {
   private readonly baseUrl = '/api';
 
   private eventSource: EventSource | null = null;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private activeExecutionId: string | null = null;
+  private attempt = 0;
+  private readonly seenEvents = new Set<string>();
+
   private readonly events = signal<FlowExecutionEvent[]>([]);
   private readonly connected = signal(false);
+  private readonly reconnecting = signal(false);
   private readonly connectionError = signal<string | null>(null);
 
   readonly flowEvents = this.events.asReadonly();
   readonly isConnected = this.connected.asReadonly();
+  readonly isReconnecting = this.reconnecting.asReadonly();
   readonly error = this.connectionError.asReadonly();
 
   connect(executionId: string): void {
     this.disconnect();
+    this.activeExecutionId = executionId;
+    this.attempt = 0;
+    this.open(executionId);
+  }
 
-    const url = `${this.baseUrl}/processes/${executionId}/events`;
+  reconnect(): void {
+    const executionId = this.activeExecutionId;
+    if (!executionId) return;
+
+    this.clearTimer();
+    this.attempt = 0;
     this.connectionError.set(null);
-
-    this.eventSource = new EventSource(url);
-
-    this.eventSource.onopen = () => {
-      this.connected.set(true);
-      this.connectionError.set(null);
-    };
-
-    this.eventSource.onmessage = (event) => {
-      try {
-        const data: FlowExecutionEvent = JSON.parse(event.data);
-        this.events.update((current) => [...current, data]);
-      } catch (e) {
-        console.error('[SSE] Failed to parse event:', event.data, e);
-      }
-    };
-
-    this.eventSource.onerror = (err) => {
-      this.connected.set(false);
-      this.connectionError.set('Connection error. Retrying...');
-      this.eventSource?.close();
-      setTimeout(() => this.connect(executionId), 3000);
-    };
+    this.open(executionId);
   }
 
   disconnect(): void {
-    if (this.eventSource) {
-      this.eventSource.close();
-      this.eventSource = null;
-    }
+    this.activeExecutionId = null;
+    this.clearTimer();
+    this.closeSource();
     this.connected.set(false);
+    this.reconnecting.set(false);
   }
 
   clear(): void {
     this.disconnect();
     this.events.set([]);
+    this.seenEvents.clear();
     this.connectionError.set(null);
+  }
+
+  private open(executionId: string): void {
+    if (this.activeExecutionId !== executionId) return;
+
+    if (typeof EventSource === 'undefined') {
+      this.connectionError.set('Este navegador no permite el monitoreo en tiempo real.');
+      return;
+    }
+
+    this.closeSource();
+    const url = `${this.baseUrl}/processes/${executionId}/events`;
+    const source = new EventSource(url);
+    this.eventSource = source;
+
+    source.onopen = () => {
+      if (this.eventSource !== source) return;
+      this.connected.set(true);
+      this.reconnecting.set(false);
+      this.attempt = 0;
+      this.connectionError.set(null);
+    };
+
+    source.onmessage = (event: MessageEvent<string>) => {
+      if (this.eventSource !== source) return;
+      try {
+        const data = JSON.parse(event.data) as FlowExecutionEvent;
+        const key = this.eventKey(data);
+        if (this.seenEvents.has(key)) return;
+        this.seenEvents.add(key);
+        this.events.update((current) => [...current, data]);
+      } catch {
+        // Un evento corrupto no debe romper el monitoreo; se ignora y se sigue escuchando.
+      }
+    };
+
+    source.onerror = () => {
+      if (this.eventSource !== source) return;
+      this.closeSource();
+      this.connected.set(false);
+      this.scheduleReconnect(executionId);
+    };
+  }
+
+  private scheduleReconnect(executionId: string): void {
+    if (this.activeExecutionId !== executionId) return;
+
+    if (this.attempt >= RETRY_DELAYS_MS.length) {
+      this.reconnecting.set(false);
+      this.connectionError.set(
+        'No pudimos reconectar con el monitoreo en tiempo real. Usa "Reconectar" para volver a intentarlo.',
+      );
+      return;
+    }
+
+    const delay = RETRY_DELAYS_MS[Math.min(this.attempt, RETRY_DELAYS_MS.length - 1)];
+    this.attempt += 1;
+    this.reconnecting.set(true);
+    this.connectionError.set(
+      `Se perdió la conexión en tiempo real. Reintentando (${this.attempt}/${RETRY_DELAYS_MS.length})…`,
+    );
+
+    this.clearTimer();
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      if (this.activeExecutionId === executionId) {
+        this.open(executionId);
+      }
+    }, delay);
+  }
+
+  private closeSource(): void {
+    if (this.eventSource) {
+      this.eventSource.close();
+      this.eventSource = null;
+    }
+  }
+
+  private clearTimer(): void {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+  }
+
+  private eventKey(event: FlowExecutionEvent): string {
+    return [
+      event.executionId,
+      event.eventType,
+      event.stepOrder ?? '',
+      event.stepName ?? '',
+      event.timestamp,
+    ].join('|');
   }
 }
