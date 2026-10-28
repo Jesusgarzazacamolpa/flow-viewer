@@ -4,6 +4,6 @@ export interface Agent {
   email: string;
   phone?: string;
   licenseNumber: string;
-  active: boolean;
+  isActive: boolean;
   specialization: string;
 }

@@ -48,7 +48,7 @@
         </div>
       <app-status-badge [status]="step.status" />
       <button
-        *ngIf="canRetry(step.status)"
+        *ngIf="canRetry(step.status) && retryEnabled"
         (click)="retryStep.emit(step.stepOrder)"
         class="rounded-md bg-red-600 px-2 py-1 text-xs font-medium text-white hover:bg-red-700 transition-colors"
         title="Reintentar paso"

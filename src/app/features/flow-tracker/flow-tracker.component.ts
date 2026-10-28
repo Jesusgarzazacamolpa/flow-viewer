@@ -81,6 +81,7 @@ export class FlowTrackerComponent implements OnInit {
     return status === 'FAILED' || status === 'ERROR';
   });
   protected readonly isPaused = computed(() => this.process()?.status?.toUpperCase() === 'PAUSED_FOR_HUMAN');
+  protected readonly canRetryProcess = computed(() => this.isFailed() || this.isPaused());
 
   ngOnInit(): void {
     this.processId = this.route.snapshot.paramMap.get('id') ?? '';
@@ -114,7 +115,7 @@ export class FlowTrackerComponent implements OnInit {
   }
 
   protected retryProcess(): void {
-    if (!this.processId || this.actionPending()) return;
+    if (!this.processId || this.actionPending() || !this.canRetryProcess()) return;
 
     this.actionPending.set(true);
     this.controlCenter
@@ -128,13 +129,14 @@ export class FlowTrackerComponent implements OnInit {
           this.refreshProcess();
         },
         error: () => {
-          // El interceptor central muestra el mensaje amigable; el botón sigue disponible para reintentar.
+          // El interceptor central muestra el mensaje amigable.
+          this.refreshProcess();
         },
       });
   }
 
   protected retryStep(stepOrder: number): void {
-    if (!this.processId || this.actionPending()) return;
+    if (!this.processId || this.actionPending() || !this.canRetryProcess()) return;
 
     this.actionPending.set(true);
     this.controlCenter
@@ -142,11 +144,12 @@ export class FlowTrackerComponent implements OnInit {
       .pipe(finalize(() => this.actionPending.set(false)), takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
-          this.notifications.success('Reintentamos el paso. Estamos actualizando el progreso.');
+          this.notifications.success('Reintentamos el paso y reanudamos el proceso.');
           this.refreshProcess();
         },
         error: () => {
           // El interceptor central muestra el mensaje amigable.
+          this.refreshProcess();
         },
       });
   }

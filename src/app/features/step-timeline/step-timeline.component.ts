@@ -13,6 +13,7 @@ import { IconComponent } from '../../shared/icon/icon.component';
 })
 export class StepTimelineComponent {
   @Input() steps: ProcessExecutionStepResponse[] = [];
+  @Input() retryEnabled = true;
   @Output() retryStep = new EventEmitter<number>();
 
   private readonly expandedIndex = signal<number | null>(null);

@@ -111,6 +111,10 @@ describe('FlowTrackerComponent', () => {
   });
 
   it('reintenta el proceso completo y avisa al usuario', () => {
+    controlCenter['getProcess'].mockReturnValue(of(makeProcess({ status: 'FAILED' })));
+    (fixture.nativeElement.querySelector('button[aria-label="Recargar"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
     const retry = findButton(fixture.nativeElement, 'Reintentar proceso')!;
     retry.click();
     fixture.detectChanges();
@@ -120,6 +124,10 @@ describe('FlowTrackerComponent', () => {
   });
 
   it('reintenta un paso desde la línea de tiempo', () => {
+    controlCenter['getProcess'].mockReturnValue(of(makeProcess({ status: 'FAILED' })));
+    (fixture.nativeElement.querySelector('button[aria-label="Recargar"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
     const retryStepButton = fixture.nativeElement.querySelector(
       'app-step-timeline button[title="Reintentar paso"]',
     ) as HTMLButtonElement;
@@ -128,6 +136,15 @@ describe('FlowTrackerComponent', () => {
 
     expect(controlCenter['retryStep']).toHaveBeenCalledWith('p1', 2);
     expect(notifications.toasts().some((toast) => toast.tone === 'success')).toBe(true);
+  });
+
+  it('oculta el reintento de paso mientras el proceso está en ejecución', () => {
+    expect((component as unknown as { canRetryProcess: () => boolean }).canRetryProcess()).toBe(false);
+
+    const retryStepButton = fixture.nativeElement.querySelector(
+      'app-step-timeline button[title="Reintentar paso"]',
+    );
+    expect(retryStepButton).toBeNull();
   });
 
   it('solicita información al reanudar un proceso pausado y la envía', () => {

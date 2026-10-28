@@ -109,7 +109,7 @@ describe('FlowDashboardComponent', () => {
               fullName: 'Luis Vega',
               email: 'luis@example.com',
               licenseNumber: 'L-1',
-              active: true,
+              isActive: true,
               specialization: 'VENTAS_NUEVOS',
             },
             {
@@ -117,7 +117,7 @@ describe('FlowDashboardComponent', () => {
               fullName: 'Marta Ruiz',
               email: 'marta@example.com',
               licenseNumber: 'L-2',
-              active: false,
+              isActive: false,
               specialization: 'VENTAS_NUEVOS',
             },
             {
@@ -125,7 +125,7 @@ describe('FlowDashboardComponent', () => {
               fullName: 'Pedro Gil',
               email: 'pedro@example.com',
               licenseNumber: 'L-3',
-              active: true,
+              isActive: true,
               specialization: 'SERVICIO',
             },
           ],

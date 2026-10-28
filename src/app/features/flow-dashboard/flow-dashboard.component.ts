@@ -134,7 +134,7 @@ export class FlowDashboardComponent implements OnInit {
     this.agents()
       .filter(
         (agent) =>
-          agent.active &&
+          agent.isActive &&
           (agent.specialization === 'VENTAS_NUEVOS' || agent.specialization === 'VENTAS_USADOS'),
       )
       .map((agent) => ({

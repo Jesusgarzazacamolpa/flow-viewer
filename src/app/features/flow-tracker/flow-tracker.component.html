@@ -91,7 +91,11 @@
       </span>
     </div>
 
-         <app-step-timeline [steps]="stepResponses()" (retryStep)="retryStep($event)" />
+         <app-step-timeline
+           [steps]="stepResponses()"
+           [retryEnabled]="canRetryProcess()"
+           (retryStep)="retryStep($event)"
+         />
 
         <div *ngIf="hasFailed()" class="mt-4 rounded-lg border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/20 p-4">
           <h3 class="mb-2 flex items-center gap-2 text-sm font-medium text-red-900 dark:text-red-300">
@@ -102,6 +106,7 @@
             {{ process()?.userErrorMessage || process()?.errorMessage || 'Error desconocido' }}
           </p>
           <button
+            *ngIf="canRetryProcess()"
             type="button"
             (click)="retryProcess()"
             [disabled]="actionPending()"
