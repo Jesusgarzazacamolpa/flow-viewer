@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HttpErrorResponse } from '@angular/common/http';
 import { signal } from '@angular/core';
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 import { FlowDashboardComponent } from './flow-dashboard.component';
 import { ControlCenterService } from '../../core/services/control-center.service';
 import { OrchestratorService } from '../../core/services/orchestrator.service';
@@ -245,6 +245,21 @@ describe('FlowDashboardComponent', () => {
     expect(dialog).not.toBeNull();
     expect(dialog.textContent).toContain('Ana Torres');
     expect(dialog.textContent).toContain('Compra de vehículo');
+  });
+
+  it('informa el estado de carga mientras inicia el flujo', () => {
+    const pending = new Subject<ProcessExecutionResponse>();
+    controlCenter['startProcess'].mockReturnValue(pending.asObservable());
+    fixture.detectChanges();
+    fillForm();
+
+    findButton(fixture.nativeElement, 'Iniciar flujo')!.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Iniciando…');
+    expect(fixture.nativeElement.querySelector('button[type="submit"] app-icon.animate-spin')).not.toBeNull();
+
+    pending.complete();
   });
 
   it('no inicia el flujo cuando la plantilla no está disponible', () => {

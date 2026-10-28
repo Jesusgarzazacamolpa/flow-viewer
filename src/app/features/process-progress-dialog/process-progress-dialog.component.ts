@@ -94,6 +94,13 @@ export class ProcessProgressDialogComponent implements OnInit, OnDestroy {
     return status === 'IN_PROGRESS' || status === 'RUNNING';
   });
   protected readonly isPaused = computed(() => this.process()?.status?.toUpperCase() === 'PAUSED_FOR_HUMAN');
+  protected readonly runningStep = computed(() => {
+    const running = this.stepResponses().find((step) => {
+      const status = step.status?.toUpperCase();
+      return status === 'RUNNING' || status === 'IN_PROGRESS';
+    });
+    return running?.name ?? this.process()?.currentStep ?? null;
+  });
 
   ngOnInit(): void {
     this.loadDashboard();

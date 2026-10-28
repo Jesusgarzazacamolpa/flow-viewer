@@ -70,10 +70,13 @@
         [disabled]="!canStart()"
         class="inline-flex items-center justify-center gap-2 rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        <app-icon name="plus" size="xs" />
         @if (starting()) {
-          <span>Iniciando…</span>
+          <span class="inline-flex items-center gap-2">
+            <app-icon name="arrow-path" size="xs" class="inline-block animate-spin" />
+            Iniciando…
+          </span>
         } @else {
+          <app-icon name="plus" size="xs" />
           <span>Iniciar flujo</span>
         }
       </button>
@@ -100,7 +103,7 @@
         [disabled]="loadingProcesses()"
         class="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700 disabled:opacity-50 dark:text-slate-500 dark:hover:text-slate-300"
       >
-        <app-icon name="arrow-path" size="xs" />
+        <app-icon name="arrow-path" size="xs" class="inline-block" [class.animate-spin]="loadingProcesses()" />
         {{ loadingProcesses() ? 'Cargando…' : 'Recargar' }}
       </button>
     </div>
@@ -155,7 +158,10 @@
             <tr>
               <td colspan="5" class="py-4 text-center text-slate-500 dark:text-slate-600">
                 @if (loadingProcesses()) {
-                  Cargando ejecuciones…
+                  <span class="inline-flex items-center gap-1.5">
+                    <app-icon name="arrow-path" size="xs" class="inline-block animate-spin" />
+                    Cargando ejecuciones…
+                  </span>
                 } @else if (listError()) {
                   Vuelve a intentarlo con el botón de reintento.
                 } @else {

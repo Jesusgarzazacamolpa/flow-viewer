@@ -132,6 +132,33 @@ describe('ProcessProgressDialogComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('tpl-1');
   });
 
+  it('indica que la IA está procesando y muestra el paso actual', () => {
+    expect(fixture.nativeElement.textContent).toContain('La IA está procesando la solicitud…');
+    expect(fixture.nativeElement.textContent).toContain('Paso actual: Firmar');
+  });
+
+  it('usa el paso actual del proceso cuando ningún paso está en ejecución', () => {
+    controlCenter['getProcess'].mockReturnValue(of(makeProcess({ currentStep: 'Firmar contrato' })));
+    controlCenter['getProcessSteps'].mockReturnValue(
+      of([{ id: 's1', stepOrder: 1, name: 'Validar', status: 'COMPLETED', retryCount: 0 }]),
+    );
+    (fixture.componentInstance as unknown as { retryLoad: () => void }).retryLoad();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Paso actual: Firmar contrato');
+  });
+
+  it('oculta el indicador de IA cuando el proceso terminó', () => {
+    controlCenter['getProcess'].mockReturnValue(of(makeProcess({ status: 'COMPLETED' })));
+    controlCenter['getProcessSteps'].mockReturnValue(
+      of([{ id: 's1', stepOrder: 1, name: 'Validar', status: 'COMPLETED', retryCount: 0 }]),
+    );
+    (fixture.componentInstance as unknown as { retryLoad: () => void }).retryLoad();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).not.toContain('La IA está procesando la solicitud…');
+  });
+
   it('muestra la intervención pendiente del proceso y permite reanudarlo', () => {
     controlCenter['getProcess'].mockReturnValue(of(makeProcess({ status: 'PAUSED_FOR_HUMAN' })));
     controlCenter['listInterventions']
