@@ -1,12 +1,15 @@
 import { DestroyRef, Injectable, inject, signal } from '@angular/core';
 
+/** Tono visual y semántico de un toast. */
 export type ToastTone = 'success' | 'error' | 'warning' | 'info';
 
+/** Acción ejecutable desde el toast (por ejemplo, reintentar una petición). */
 export interface ToastAction {
   label: string;
   run: () => void;
 }
 
+/** Opciones para personalizar un toast; `duration` en ms, 0 lo deja fijo. */
 export interface ToastOptions {
   title?: string;
   reference?: string;
@@ -14,6 +17,7 @@ export interface ToastOptions {
   action?: ToastAction;
 }
 
+/** Toast ya encolado, con id, tono y contenido resueltos. */
 export interface Toast {
   id: number;
   tone: ToastTone;
@@ -24,6 +28,7 @@ export interface Toast {
   action?: ToastAction;
 }
 
+/** Duración por defecto de cada tono: los errores permanecen más tiempo. */
 const DEFAULT_DURATIONS: Record<ToastTone, number> = {
   success: 4000,
   info: 5000,
@@ -31,6 +36,10 @@ const DEFAULT_DURATIONS: Record<ToastTone, number> = {
   error: 8000,
 };
 
+/**
+ * Cola global de toasts en memoria: expone la lista reactiva, programa el
+ * cierre automático de cada aviso y limpia los temporizadores al destruirse.
+ */
 @Injectable({ providedIn: 'root' })
 export class NotificationService {
   private readonly destroyRef = inject(DestroyRef);
@@ -38,45 +47,55 @@ export class NotificationService {
   private readonly _toasts = signal<Toast[]>([]);
   private nextId = 1;
 
+  /** Toasts visibles, en orden de llegada. */
   readonly toasts = this._toasts.asReadonly();
 
+  /** Cancela los temporizadores pendientes al destruir el servicio. */
   constructor() {
     this.destroyRef.onDestroy(() => this.clear());
   }
 
+  /** Encola un toast de éxito y devuelve su id. */
   success(message: string, options: ToastOptions = {}): number {
     return this.push('success', message, options);
   }
 
+  /** Encola un toast de error y devuelve su id. */
   error(message: string, options: ToastOptions = {}): number {
     return this.push('error', message, options);
   }
 
+  /** Encola un toast de advertencia y devuelve su id. */
   warning(message: string, options: ToastOptions = {}): number {
     return this.push('warning', message, options);
   }
 
+  /** Encola un toast informativo y devuelve su id. */
   info(message: string, options: ToastOptions = {}): number {
     return this.push('info', message, options);
   }
 
+  /** Quita el toast indicado y cancela su temporizador. */
   dismiss(id: number): void {
     this.clearTimer(id);
     this._toasts.update((toasts) => toasts.filter((toast) => toast.id !== id));
   }
 
+  /** Ejecuta la acción del toast (por ejemplo, reintentar) y lo descarta. */
   runAction(id: number): void {
     const toast = this._toasts().find((item) => item.id === id);
     this.dismiss(id);
     toast?.action?.run();
   }
 
+  /** Vacía todos los toasts y sus temporizadores. */
   clear(): void {
     this.timers.forEach((timer) => clearTimeout(timer));
     this.timers.clear();
     this._toasts.set([]);
   }
 
+  /** Crea el toast con la duración del tono o la indicada y programa su cierre. */
   private push(tone: ToastTone, message: string, options: ToastOptions): number {
     const id = this.nextId++;
     const duration = options.duration ?? DEFAULT_DURATIONS[tone];

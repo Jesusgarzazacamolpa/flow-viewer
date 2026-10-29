@@ -37,7 +37,7 @@ function makeIntervention(): InterventionResponse {
     processId: 'p1',
     stepName: 'Validar identidad',
     stepOrder: 2,
-    status: 'PENDING',
+    status: 'PENDING_REVIEW',
     errorMessage: 'Necesitamos confirmar la identidad del cliente.',
     suggestedAction: 'Verificar INE',
     createdAt: '2026-01-01T10:00:00Z',
@@ -77,6 +77,7 @@ describe('ProcessProgressDialogComponent', () => {
       getProcessSteps: jest.fn(() => of(makeSteps())),
       listInterventions: jest.fn(() => of([])),
       resumeIntervention: jest.fn(() => of(makeIntervention())),
+      rejectIntervention: jest.fn(() => of(makeIntervention())),
       retryProcess: jest.fn(() => of(makeProcess())),
     };
     sse = {
@@ -179,6 +180,41 @@ describe('ProcessProgressDialogComponent', () => {
     expect(fixture.nativeElement.textContent).not.toContain('Validar identidad');
   });
 
+  it('rechaza la intervención y cancela el proceso tras confirmar', () => {
+    const confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(true);
+    controlCenter['getProcess'].mockReturnValue(of(makeProcess({ status: 'PAUSED_FOR_HUMAN' })));
+    controlCenter['listInterventions']
+      .mockReturnValueOnce(of([makeIntervention()]))
+      .mockReturnValue(of([]));
+    (fixture.componentInstance as unknown as { retryLoad: () => void }).retryLoad();
+    fixture.detectChanges();
+
+    findButton(fixture.nativeElement, 'Rechazar intervención')!.click();
+    fixture.detectChanges();
+
+    expect(confirmSpy).toHaveBeenCalled();
+    expect(controlCenter['rejectIntervention']).toHaveBeenCalledWith('i1');
+    expect(controlCenter['resumeIntervention']).not.toHaveBeenCalled();
+    expect(notifications.toasts().some((toast) => toast.tone === 'success')).toBe(true);
+    expect(fixture.nativeElement.textContent).not.toContain('Validar identidad');
+    confirmSpy.mockRestore();
+  });
+
+  it('no rechaza la intervención cuando se cancela la confirmación', () => {
+    const confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(false);
+    controlCenter['getProcess'].mockReturnValue(of(makeProcess({ status: 'PAUSED_FOR_HUMAN' })));
+    controlCenter['listInterventions'].mockReturnValue(of([makeIntervention()]));
+    (fixture.componentInstance as unknown as { retryLoad: () => void }).retryLoad();
+    fixture.detectChanges();
+
+    findButton(fixture.nativeElement, 'Rechazar intervención')!.click();
+    fixture.detectChanges();
+
+    expect(controlCenter['rejectIntervention']).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.textContent).toContain('Validar identidad');
+    confirmSpy.mockRestore();
+  });
+
   it('refresca proceso y pasos cuando llega un evento SSE relevante', () => {
     sse.flowEvents.set([makeEvent('STEP_STARTED')]);
     fixture.detectChanges();
@@ -197,15 +233,30 @@ describe('ProcessProgressDialogComponent', () => {
     fixture.detectChanges();
 
     expect(controlCenter['getProcess']).toHaveBeenCalledTimes(2);
-    expect(controlCenter['listInterventions']).toHaveBeenCalledWith(undefined, true);
+    expect(controlCenter['listInterventions']).toHaveBeenCalledWith(
+      { processId: 'p1', status: 'PENDING_REVIEW' },
+      true,
+    );
   });
 
   it('consulta la intervención pendiente cuando un paso la requiere', () => {
+    controlCenter['getProcess'].mockReturnValue(of(makeProcess({ status: 'PAUSED_FOR_HUMAN' })));
     sse.flowEvents.set([makeEvent('STEP_REQUIRES_INTERVENTION')]);
     fixture.detectChanges();
 
-    expect(controlCenter['listInterventions']).toHaveBeenCalledWith(undefined, true);
-    expect(controlCenter['getProcess']).toHaveBeenCalledTimes(1);
+    expect(controlCenter['listInterventions']).toHaveBeenCalledWith(
+      { processId: 'p1', status: 'PENDING_REVIEW' },
+      true,
+    );
+    expect(controlCenter['getProcess']).toHaveBeenCalledTimes(2);
+  });
+
+  it('actualiza el proceso cuando llega FLOW_CANCELLED', () => {
+    sse.flowEvents.set([makeEvent('FLOW_CANCELLED')]);
+    fixture.detectChanges();
+
+    expect(controlCenter['getProcess']).toHaveBeenCalledTimes(2);
+    expect(controlCenter['getProcessSteps']).toHaveBeenCalledTimes(2);
   });
 
   it('muestra un error amigable y permite reintentar la carga', () => {
@@ -287,6 +338,102 @@ describe('ProcessProgressDialogComponent', () => {
 
     expect(sse.disconnect).toHaveBeenCalled();
     expect(closed).toHaveBeenCalledTimes(1);
+  });
+
+  it('no declara el proceso completado mientras el estado sigue en curso', () => {
+    controlCenter['getProcess'].mockReturnValue(of(makeProcess({ status: 'IN_PROGRESS' })));
+    controlCenter['getProcessSteps'].mockReturnValue(
+      of([
+        { id: 's1', stepOrder: 1, name: 'Validar', status: 'COMPLETED', retryCount: 0 },
+        { id: 's2', stepOrder: 2, name: 'Firmar', status: 'COMPLETED', retryCount: 0 },
+      ]),
+    );
+    (fixture.componentInstance as unknown as { retryLoad: () => void }).retryLoad();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).not.toContain('¡Proceso completado!');
+    expect(fixture.nativeElement.textContent).toContain('2 de 2 pasos completados');
+  });
+
+  it('declara el proceso completado solo cuando el estado es COMPLETED', () => {
+    controlCenter['getProcess'].mockReturnValue(of(makeProcess({ status: 'COMPLETED' })));
+    controlCenter['getProcessSteps'].mockReturnValue(
+      of([{ id: 's1', stepOrder: 1, name: 'Validar', status: 'COMPLETED', retryCount: 0 }]),
+    );
+    (fixture.componentInstance as unknown as { retryLoad: () => void }).retryLoad();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('¡Proceso completado!');
+  });
+
+  it('no muestra el panel de error cuando el proceso está pausado por intervención', () => {
+    controlCenter['getProcess'].mockReturnValue(
+      of(makeProcess({
+        status: 'PAUSED_FOR_HUMAN',
+        userErrorTitle: 'Autorización requerida',
+        userErrorMessage: 'Necesitamos aprobar el financiamiento.',
+      })),
+    );
+    controlCenter['listInterventions'].mockReturnValue(of([makeIntervention()]));
+    (fixture.componentInstance as unknown as { retryLoad: () => void }).retryLoad();
+    fixture.detectChanges();
+
+    const content = fixture.nativeElement.textContent;
+    expect(content).toContain('Intervención humana requerida');
+    expect(content).not.toContain('Error del proceso');
+    expect(content).not.toContain('No pudimos completar el proceso');
+    expect(findButton(fixture.nativeElement, 'Reintentar proceso')).toBeUndefined();
+    expect(content).toContain('En espera de intervención');
+  });
+
+  it('muestra el panel de error solo cuando el proceso falló', () => {
+    controlCenter['getProcess'].mockReturnValue(
+      of(makeProcess({
+        status: 'FAILED',
+        userErrorTitle: 'No pudimos firmar el contrato',
+        userErrorMessage: 'El servicio de firma no respondió.',
+      })),
+    );
+    (fixture.componentInstance as unknown as { retryLoad: () => void }).retryLoad();
+    fixture.detectChanges();
+
+    const content = fixture.nativeElement.textContent;
+    expect(content).toContain('Falló el proceso');
+    expect(content).toContain('No pudimos firmar el contrato');
+    expect(content).toContain('El servicio de firma no respondió.');
+    expect(findButton(fixture.nativeElement, 'Reintentar proceso')).toBeDefined();
+  });
+
+  it('muestra el estado cancelado sin ofrecer reintento', () => {
+    controlCenter['getProcess'].mockReturnValue(
+      of(makeProcess({
+        status: 'CANCELLED',
+        userErrorTitle: 'Proceso cancelado',
+        userErrorMessage: 'La autorización fue rechazada, por lo que el proceso no puede continuar.',
+      })),
+    );
+    (fixture.componentInstance as unknown as { retryLoad: () => void }).retryLoad();
+    fixture.detectChanges();
+
+    const content = fixture.nativeElement.textContent;
+    expect(content).toContain('La autorización fue rechazada, por lo que el proceso no puede continuar.');
+    expect(findButton(fixture.nativeElement, 'Reintentar proceso')).toBeUndefined();
+    expect(findButton(fixture.nativeElement, 'Reanudar proceso')).toBeUndefined();
+  });
+
+  it('permite reanudar un proceso pausado sin intervención registrada', () => {
+    controlCenter['getProcess'].mockReturnValue(of(makeProcess({ status: 'PAUSED_FOR_HUMAN' })));
+    controlCenter['listInterventions'].mockReturnValue(of([]));
+    (fixture.componentInstance as unknown as { retryLoad: () => void }).retryLoad();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('El proceso está pausado');
+
+    findButton(fixture.nativeElement, 'Reanudar proceso')!.click();
+    fixture.detectChanges();
+
+    expect(controlCenter['retryProcess']).toHaveBeenCalledWith('p1');
+    expect(controlCenter['resumeIntervention']).not.toHaveBeenCalled();
   });
 
   it('no ofrece navegación a una página de detalle completa', () => {

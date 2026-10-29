@@ -1,8 +1,14 @@
 import { Injectable, signal } from '@angular/core';
 import { FlowExecutionEvent } from '../interfaces/process.models';
 
+/** Esperas de reconexión en milisegundos; el último valor actúa como tope. */
 const RETRY_DELAYS_MS = [2000, 4000, 8000, 16000, 30000] as const;
 
+/**
+ * Mantiene el stream SSE de una ejecución contra `GET /api/processes/{id}/events`.
+ * Acumula eventos sin duplicados, expone el estado de conexión y reintenta con
+ * backoff (2, 4, 8, 16 y 30 s) hasta agotar los intentos.
+ */
 @Injectable({ providedIn: 'root' })
 export class FlowSseService {
   private readonly baseUrl = '/api';
@@ -18,11 +24,14 @@ export class FlowSseService {
   private readonly reconnecting = signal(false);
   private readonly connectionError = signal<string | null>(null);
 
+  /** Eventos recibidos en orden de llegada (persisten hasta llamar a `clear`). */
   readonly flowEvents = this.events.asReadonly();
   readonly isConnected = this.connected.asReadonly();
   readonly isReconnecting = this.reconnecting.asReadonly();
+  /** Último error de conexión visible para la vista, o null. */
   readonly error = this.connectionError.asReadonly();
 
+  /** Abre el stream de la ejecución; cierra el anterior y reinicia el backoff. */
   connect(executionId: string): void {
     this.disconnect();
     this.activeExecutionId = executionId;
@@ -30,6 +39,7 @@ export class FlowSseService {
     this.open(executionId);
   }
 
+  /** Reconexión manual de la ejecución activa, reiniciando el backoff. */
   reconnect(): void {
     const executionId = this.activeExecutionId;
     if (!executionId) return;
@@ -40,6 +50,7 @@ export class FlowSseService {
     this.open(executionId);
   }
 
+  /** Cierra el stream y el temporizador, conservando los eventos ya recibidos. */
   disconnect(): void {
     this.activeExecutionId = null;
     this.clearTimer();
@@ -48,6 +59,7 @@ export class FlowSseService {
     this.reconnecting.set(false);
   }
 
+  /** Desconecta y vacía eventos, deduplicación y error. */
   clear(): void {
     this.disconnect();
     this.events.set([]);
@@ -55,6 +67,7 @@ export class FlowSseService {
     this.connectionError.set(null);
   }
 
+  /** Crea el EventSource y cablea apertura, mensajes y error; ignora fuentes obsoletas. */
   private open(executionId: string): void {
     if (this.activeExecutionId !== executionId) return;
 
@@ -97,6 +110,7 @@ export class FlowSseService {
     };
   }
 
+  /** Programa el siguiente intento o expone un error definitivo al agotar los reintentos. */
   private scheduleReconnect(executionId: string): void {
     if (this.activeExecutionId !== executionId) return;
 
@@ -138,6 +152,7 @@ export class FlowSseService {
     }
   }
 
+  /** Clave de deduplicación: ejecución, tipo, paso y timestamp. */
   private eventKey(event: FlowExecutionEvent): string {
     return [
       event.executionId,

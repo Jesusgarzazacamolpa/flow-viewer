@@ -1,3 +1,9 @@
+/**
+ * Alertas del módulo Shield: eventos de seguridad con severidad, origen y
+ * estado de resolución.
+ */
+
+/** Alerta individual mostrada en la tabla de Shield. */
 export interface ShieldAlert {
   id: string;
   severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
@@ -10,6 +16,7 @@ export interface ShieldAlert {
   details?: Record<string, unknown>;
 }
 
+/** Totales de alertas por severidad y actividad reciente. */
 export interface ShieldStats {
   totalAlerts: number;
   alertsBySeverity: {

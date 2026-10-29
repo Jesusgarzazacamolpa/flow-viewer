@@ -32,6 +32,7 @@
           [options]="flowOptions"
           placeholder="Seleccionar flujo..."
           noResultsText="No hay flujos disponibles"
+          [errorText]="templateError()"
         />
         @if (form.controls.flowId.invalid && form.controls.flowId.touched) {
           <p class="mt-1 text-xs text-red-600 dark:text-red-400">Selecciona un flujo para continuar.</p>
@@ -126,6 +127,7 @@
             <th class="pb-2 text-xs font-medium uppercase text-slate-500 dark:text-slate-500">
               ID de ejecución
             </th>
+            <th class="pb-2 text-xs font-medium uppercase text-slate-500 dark:text-slate-400">Flujo</th>
             <th class="pb-2 text-xs font-medium uppercase text-slate-500 dark:text-slate-400">Cliente</th>
             <th class="pb-2 text-xs font-medium uppercase text-slate-500 dark:text-slate-400">Estado</th>
             <th class="pb-2 text-xs font-medium uppercase text-slate-500 dark:text-slate-400">Pasos</th>
@@ -138,6 +140,9 @@
               class="border-b border-slate-200/50 hover:bg-slate-100 dark:border-slate-800/50 dark:hover:bg-slate-800/30"
             >
               <td class="py-2 font-mono text-xs text-slate-500 dark:text-slate-400">{{ process.id }}</td>
+              <td class="py-2 text-slate-700 dark:text-slate-300">
+                {{ flowLabelFor(process.processTemplateId) }}
+              </td>
               <td class="py-2 text-slate-700 dark:text-slate-300">{{ customerNameFor(process.customerId) }}</td>
               <td class="py-2"><app-status-badge [status]="process.status" /></td>
               <td class="py-2 text-xs text-slate-500 dark:text-slate-500">
@@ -156,7 +161,7 @@
             </tr>
           } @empty {
             <tr>
-              <td colspan="5" class="py-4 text-center text-slate-500 dark:text-slate-600">
+              <td colspan="6" class="py-4 text-center text-slate-500 dark:text-slate-600">
                 @if (loadingProcesses()) {
                   <span class="inline-flex items-center gap-1.5">
                     <app-icon name="arrow-path" size="xs" class="inline-block animate-spin" />
@@ -173,6 +178,34 @@
         </tbody>
       </table>
     </div>
+
+    @if (totalPages() > 1) {
+      <div
+        class="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400"
+      >
+        <span>
+          Página {{ pageIndex() + 1 }} de {{ totalPages() }} · {{ totalElements() }} ejecuciones
+        </span>
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            (click)="goToPreviousPage()"
+            [disabled]="pageIndex() === 0 || loadingProcesses()"
+            class="rounded-md border border-slate-300 px-2 py-1 hover:bg-slate-100 disabled:opacity-40 dark:border-slate-700 dark:hover:bg-slate-800"
+          >
+            Anterior
+          </button>
+          <button
+            type="button"
+            (click)="goToNextPage()"
+            [disabled]="pageIndex() + 1 >= totalPages() || loadingProcesses()"
+            class="rounded-md border border-slate-300 px-2 py-1 hover:bg-slate-100 disabled:opacity-40 dark:border-slate-700 dark:hover:bg-slate-800"
+          >
+            Siguiente
+          </button>
+        </div>
+      </div>
+    }
   </section>
 
   @if (isDialogOpen()) {

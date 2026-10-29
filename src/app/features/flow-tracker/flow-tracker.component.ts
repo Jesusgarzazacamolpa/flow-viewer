@@ -9,12 +9,27 @@ import { ControlCenterService } from '../../core/services/control-center.service
 import { NotificationService } from '../../core/services/notification.service';
 import { ProcessExecutionResponse, ProcessExecutionStepResponse } from '../../core/interfaces/process.models';
 import { UserFacingError } from '../../core/models/api-error.model';
+import {
+  ProcessProgressTone,
+  isProcessFailed,
+  isProcessInProgress,
+  isProcessPaused,
+  normalizeProcessStatus,
+  progressToneClass,
+  resolveProgressLabel,
+  resolveProgressTone,
+} from '../../core/models/process-status.model';
 import { toUserFacingError } from '../../core/interceptors/http-error.interceptor';
 import { StatusBadgeComponent } from '../status-badge/status-badge.component';
 import { StepTimelineComponent } from '../step-timeline/step-timeline.component';
+import { ProcessErrorPanelComponent } from '../process-error-panel/process-error-panel.component';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { ErrorBannerComponent } from '../../shared/error-banner/error-banner.component';
 
+/**
+ * Selector `app-flow-tracker`. Vista de seguimiento de un proceso por el id de la ruta, con pasos,
+ * estado y reintentos; usa `ControlCenterService` y `NotificationService`. No está enrutado ni se usa.
+ */
 @Component({
   selector: 'app-flow-tracker',
   standalone: true,
@@ -23,6 +38,7 @@ import { ErrorBannerComponent } from '../../shared/error-banner/error-banner.com
     ReactiveFormsModule,
     StatusBadgeComponent,
     StepTimelineComponent,
+    ProcessErrorPanelComponent,
     IconComponent,
     ErrorBannerComponent,
   ],
@@ -37,51 +53,60 @@ export class FlowTrackerComponent implements OnInit {
   private readonly notifications = inject(NotificationService);
   private readonly destroyRef = inject(DestroyRef);
 
+  /** Id del proceso tomado de los parámetros de la ruta. */
   protected processId = '';
+  /** Datos del proceso cargado. */
   protected readonly process = signal<ProcessExecutionResponse | null>(null);
+  /** Pasos del proceso en orden de ejecución. */
   protected readonly stepResponses = signal<ProcessExecutionStepResponse[]>([]);
+  /** Error amigable de la última carga o acción. */
   protected readonly error = signal<UserFacingError | null>(null);
+  /** Indica si los pasos se están cargando. */
   protected readonly loading = signal(false);
+  /** Indica si hay un reintento en curso para deshabilitar acciones. */
   protected readonly actionPending = signal(false);
 
+  /** Muestra el campo de texto para indicar el motivo del reintento. */
   protected readonly showUserInput = signal(false);
+  /** Texto libre con el motivo o contexto del reintento. */
   protected readonly userInputControl = new FormControl('', {
     nonNullable: true,
     validators: [Validators.required, Validators.maxLength(2000)],
   });
 
+  /** Estado de validez del campo de texto, expuesto como signal para la plantilla. */
   protected readonly userInputValid = toSignal(
     this.userInputControl.statusChanges.pipe(startWith(this.userInputControl.status)),
     { initialValue: this.userInputControl.status },
   );
 
+  /** Pasos completados del proceso. */
   protected readonly completedSteps = computed(
     () => this.stepResponses().filter((step) => step.status?.toUpperCase() === 'COMPLETED').length,
   );
+  /** Total de pasos cargados. */
   protected readonly totalSteps = computed(() => this.stepResponses().length);
-  protected readonly allCompleted = computed(
-    () => this.totalSteps() > 0 && this.completedSteps() === this.totalSteps(),
+  /** Estado normalizado del proceso. */
+  protected readonly status = computed(() => normalizeProcessStatus(this.process()?.status));
+  /** Texto de avance que combina estado y número de pasos. */
+  protected readonly progressLabel = computed(() =>
+    resolveProgressLabel(this.status(), this.completedSteps(), this.totalSteps()),
   );
-  protected readonly hasFailed = computed(() =>
-    this.stepResponses().some(
-      (step) => step.status?.toUpperCase() === 'FAILED' || step.status?.toUpperCase() === 'ERROR',
-    ),
-  );
-  protected readonly progressLabel = computed(() => {
-    if (this.hasFailed()) return 'Falló el proceso';
-    if (this.allCompleted()) return '¡Proceso completado!';
-    return `${this.completedSteps()} de ${this.totalSteps()} pasos completados`;
-  });
-  protected readonly isInProgress = computed(() => {
-    const status = this.process()?.status?.toUpperCase();
-    return status === 'IN_PROGRESS' || status === 'RUNNING';
-  });
-  protected readonly isFailed = computed(() => {
-    const status = this.process()?.status?.toUpperCase();
-    return status === 'FAILED' || status === 'ERROR';
-  });
-  protected readonly isPaused = computed(() => this.process()?.status?.toUpperCase() === 'PAUSED_FOR_HUMAN');
+  /** Tono visual asociado al estado del proceso. */
+  protected readonly progressTone = computed(() => resolveProgressTone(this.status()));
+  /** Indica si el proceso sigue en ejecución. */
+  protected readonly isInProgress = computed(() => isProcessInProgress(this.status()));
+  /** Indica si el proceso falló. */
+  protected readonly isFailed = computed(() => isProcessFailed(this.status()));
+  /** Indica si el proceso está pausado esperando intervención. */
+  protected readonly isPaused = computed(() => isProcessPaused(this.status()));
+  /** Permite reintentar el proceso cuando falló o quedó pausado. */
   protected readonly canRetryProcess = computed(() => this.isFailed() || this.isPaused());
+
+  /** Traduce el tono de progreso a la clase de color correspondiente. */
+  protected toneClass(tone: ProcessProgressTone): string {
+    return progressToneClass(tone);
+  }
 
   ngOnInit(): void {
     this.processId = this.route.snapshot.paramMap.get('id') ?? '';
@@ -90,6 +115,7 @@ export class FlowTrackerComponent implements OnInit {
     }
   }
 
+  /** Recarga el proceso y sus pasos; ambos alimentan las señales de la vista. */
   protected refreshProcess(): void {
     if (!this.processId) return;
 
@@ -110,10 +136,12 @@ export class FlowTrackerComponent implements OnInit {
       });
   }
 
+  /** Vuelve a la ruta raíz (dashboard). */
   protected goBack(): void {
     this.router.navigate(['']);
   }
 
+  /** Reintenta el proceso completo con un motivo opcional y recarga el progreso. */
   protected retryProcess(): void {
     if (!this.processId || this.actionPending() || !this.canRetryProcess()) return;
 
@@ -135,6 +163,7 @@ export class FlowTrackerComponent implements OnInit {
       });
   }
 
+  /** Reintenta un paso concreto por su orden y refresca el proceso. */
   protected retryStep(stepOrder: number): void {
     if (!this.processId || this.actionPending() || !this.canRetryProcess()) return;
 
@@ -154,6 +183,7 @@ export class FlowTrackerComponent implements OnInit {
       });
   }
 
+  /** Valida el motivo escrito y delega en `retryProcess`. */
   protected submitUserInput(): void {
     this.userInputControl.markAsTouched();
     if (this.userInputControl.invalid) return;

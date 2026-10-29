@@ -1,11 +1,16 @@
 import { Component, Input } from '@angular/core';
 import { NgClass } from '@angular/common';
 
+/** Entrada del catálogo interno de iconos: trazo SVG y clase de color por defecto. */
 interface IconData {
   path: string;
   defaultClass: string;
 }
 
+/**
+ * Selector `app-icon`. Renderiza un icono SVG inline del catálogo estático según el input `name`;
+ * permite ajustar tamaño, color y grosor de trazo, y no emite eventos.
+ */
 @Component({
   selector: 'app-icon',
   standalone: true,
@@ -113,10 +118,15 @@ export class IconComponent {
     },
   };
 
+  /** Clave del icono dentro del catálogo; si no existe se dibuja un SVG vacío. */
   @Input() name!: string;
+  /** Tamaño predefinido del icono. */
   @Input() size: 'xs' | 'sm' | 'md' | 'lg' = 'sm';
+  /** Clases de color adicionales; si está vacío se usa el color por defecto del icono. */
   @Input() colorClass: string = '';
+  /** Grosor del trazo SVG. */
   @Input() strokeWidth: number = 1.5;
+  /** Si es `true`, el icono no se oculta a los lectores de pantalla. */
   @Input() screenReader: boolean = false;
 
   private sizeClassMap = {
@@ -126,6 +136,7 @@ export class IconComponent {
     lg: 'h-6 w-6',
   };
 
+  /** Devuelve el trazo y la clase por defecto del icono solicitado. */
   icon() {
     const entry = IconComponent.ICONS[this.name];
     return entry ?? { path: '', defaultClass: '' };

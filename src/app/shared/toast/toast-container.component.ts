@@ -2,6 +2,10 @@ import { Component, inject } from '@angular/core';
 import { NotificationService, Toast, ToastTone } from '../../core/services/notification.service';
 import { IconComponent } from '../icon/icon.component';
 
+/**
+ * Selector `app-toast-container`. Contenedor fijo que renderiza las notificaciones globales de
+ * `NotificationService` y permite ejecutar su acción o descartarlas.
+ */
 @Component({
   selector: 'app-toast-container',
   standalone: true,
@@ -58,8 +62,10 @@ import { IconComponent } from '../icon/icon.component';
   `,
 })
 export class ToastContainerComponent {
+  /** Servicio compartido del que se leen y descartan los toasts. */
   protected readonly notifications = inject(NotificationService);
 
+  /** Clases de borde, fondo y texto del toast según su tono. */
   protected toneContainerClass(tone: ToastTone): string {
     switch (tone) {
       case 'success':
@@ -73,6 +79,7 @@ export class ToastContainerComponent {
     }
   }
 
+  /** Clases de fondo del círculo que envuelve el icono del tono. */
   protected toneIconWrapperClass(tone: ToastTone): string {
     switch (tone) {
       case 'success':
@@ -86,6 +93,7 @@ export class ToastContainerComponent {
     }
   }
 
+  /** Nombre del icono que representa el tono del toast. */
   protected toneIcon(tone: ToastTone): string {
     switch (tone) {
       case 'success':
@@ -99,6 +107,7 @@ export class ToastContainerComponent {
     }
   }
 
+  /** Icono del botón de acción: reintentar en errores y avisos, confirmar en el resto. */
   protected actionIcon(tone: ToastTone): string {
     return tone === 'error' || tone === 'warning' ? 'arrow-path' : 'check';
   }

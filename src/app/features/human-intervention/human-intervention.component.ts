@@ -9,8 +9,13 @@ import { UserFacingError } from '../../core/models/api-error.model';
 import { toUserFacingError } from '../../core/interceptors/http-error.interceptor';
 import { ErrorBannerComponent } from '../../shared/error-banner/error-banner.component';
 
+/** Acciones disponibles sobre una intervención: reanudar el proceso o cancelarlo. */
 type InterventionAction = 'RESUME' | 'CANCEL';
 
+/**
+ * Selector `app-human-intervention`. Tabla de pasos que requieren atención manual, con asignación
+ * y acciones; usa `HumanInterventionService` y `NotificationService`. No está enrutado ni se usa.
+ */
 @Component({
   selector: 'app-human-intervention',
   standalone: true,
@@ -135,16 +140,22 @@ export class HumanInterventionComponent implements OnInit {
   private readonly notifications = inject(NotificationService);
   private readonly assigneeControls = new Map<string, FormControl<string>>();
 
+  /** Intervenciones en estado PENDING mostradas en la tabla. */
   protected readonly interventions = signal<HumanIntervention[]>([]);
+  /** Error amigable de la última carga de intervenciones. */
   protected readonly loadError = signal<UserFacingError | null>(null);
+  /** Indica si hay una carga de intervenciones en curso. */
   protected readonly loading = signal(false);
+  /** Id de la intervención que se está asignando. */
   protected readonly assigningId = signal<string | null>(null);
+  /** Id de la intervención sobre la que se ejecuta una acción RESUME o CANCEL. */
   protected readonly actingId = signal<string | null>(null);
 
   ngOnInit(): void {
     this.loadInterventions();
   }
 
+  /** Carga las intervenciones y conserva solo las pendientes. */
   protected loadInterventions(): void {
     this.loading.set(true);
     this.loadError.set(null);
@@ -158,10 +169,12 @@ export class HumanInterventionComponent implements OnInit {
       });
   }
 
+  /** Vuelve a cargar la lista; lo usan el botón de recarga y el reintento del banner. */
   protected refresh(): void {
     this.loadInterventions();
   }
 
+  /** Devuelve (y crea si hace falta) el control de texto para asignar la intervención indicada. */
   protected assigneeControlFor(id: string): FormControl<string> {
     let control = this.assigneeControls.get(id);
     if (!control) {
@@ -174,6 +187,7 @@ export class HumanInterventionComponent implements OnInit {
     return control;
   }
 
+  /** Asigna la intervención al usuario indicado y actualiza la fila con la respuesta. */
   protected assign(item: HumanIntervention): void {
     const control = this.assigneeControlFor(item.id);
     control.markAsTouched();
@@ -195,6 +209,7 @@ export class HumanInterventionComponent implements OnInit {
       });
   }
 
+  /** Procesa la acción elegida en el desplegable y retira la intervención de la lista al completarla. */
   protected onActionSelect(event: Event, item: HumanIntervention): void {
     const select = event.target as HTMLSelectElement;
     const action = select.value as InterventionAction | '';
@@ -223,10 +238,12 @@ export class HumanInterventionComponent implements OnInit {
       });
   }
 
+  /** `trackBy` de la tabla basado en el id de la intervención. */
   protected trackById(_index: number, item: HumanIntervention): string {
     return item.id;
   }
 
+  /** Clases de color del badge según el estado de la intervención. */
   protected statusBadgeClass(status: string): string {
     switch (status) {
       case 'PENDING':

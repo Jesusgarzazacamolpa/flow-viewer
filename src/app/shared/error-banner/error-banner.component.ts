@@ -1,6 +1,10 @@
 import { Component, input, output } from '@angular/core';
 import { IconComponent } from '../icon/icon.component';
 
+/**
+ * Selector `app-error-banner`. Banner presentacional de error con código de referencia opcional y
+ * botón de reintento; emite `retry` cuando el consumidor quiere repetir la operación.
+ */
 @Component({
   selector: 'app-error-banner',
   standalone: true,
@@ -40,10 +44,16 @@ import { IconComponent } from '../icon/icon.component';
   `,
 })
 export class ErrorBannerComponent {
+  /** Título del banner; por defecto "No pudimos completar la acción". */
   readonly title = input('No pudimos completar la acción');
+  /** Mensaje de error legible; es obligatorio. */
   readonly message = input.required<string>();
+  /** Código de referencia opcional para soporte o trazabilidad. */
   readonly reference = input<string>();
+  /** Texto del botón de reintento. */
   readonly retryLabel = input('Reintentar');
+  /** Muestra u oculta el botón de reintento. */
   readonly retryable = input(true);
+  /** Se emite al pulsar el botón de reintento. */
   readonly retry = output<void>();
 }

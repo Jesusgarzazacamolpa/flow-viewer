@@ -7,7 +7,14 @@ import { ControlCenterService } from '../../core/services/control-center.service
 import { OrchestratorService } from '../../core/services/orchestrator.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { FlowSseService } from '../../core/services/flow-sse.service';
-import { ProcessExecutionResponse } from '../../core/interfaces/process.models';
+import { ProcessExecutionPage, ProcessExecutionResponse } from '../../core/interfaces/process.models';
+import { FLOW_CATALOG } from '../../core/constants/flow-catalog';
+
+const TEMPLATE_IDS: Record<string, string> = {
+  'Compra de vehiculo': 'tpl-1',
+  'Compra con financiamiento': 'tpl-fin',
+  'Apartado de vehiculo': 'tpl-ap',
+};
 
 function httpError(message: string, status = 422, flowCode = 'FLOW-01'): HttpErrorResponse {
   return new HttpErrorResponse({
@@ -24,6 +31,20 @@ function makeProcess(id = 'p1'): ProcessExecutionResponse {
     customerId: 'c1',
     status: 'IN_PROGRESS',
     steps: [],
+  };
+}
+
+function makePage(
+  content: ProcessExecutionResponse[] = [makeProcess()],
+  overrides: Partial<ProcessExecutionPage> = {},
+): ProcessExecutionPage {
+  return {
+    content,
+    page: 0,
+    size: 10,
+    totalElements: content.length,
+    totalPages: content.length ? 1 : 0,
+    ...overrides,
   };
 }
 
@@ -54,7 +75,8 @@ describe('FlowDashboardComponent', () => {
   beforeEach(() => {
     controlCenter = {
       getDefaultTemplate: jest.fn(() => of({ id: 'tpl-1' })),
-      listProcesses: jest.fn(() => of([makeProcess()])),
+      getTemplateByName: jest.fn((name: string) => of({ id: TEMPLATE_IDS[name] ?? 'tpl-1' })),
+      listProcesses: jest.fn(() => of(makePage())),
       startProcess: jest.fn(() => of(makeProcess('p-new'))),
       getProcess: jest.fn(() => of(makeProcess())),
       getProcessSteps: jest.fn(() => of([])),
@@ -179,15 +201,19 @@ describe('FlowDashboardComponent', () => {
     fixture.detectChanges();
   }
 
-  it('carga la plantilla y los catálogos del formulario', () => {
+  it('carga la plantilla de cada flujo y los catálogos del formulario', () => {
     fixture.detectChanges();
 
-    expect(controlCenter['getDefaultTemplate']).toHaveBeenCalledWith(true);
+    expect(controlCenter['getTemplateByName']).toHaveBeenCalledTimes(FLOW_CATALOG.length);
+    expect(controlCenter['getTemplateByName']).toHaveBeenCalledWith('Compra de vehiculo', true);
+    expect(controlCenter['getTemplateByName']).toHaveBeenCalledWith('Compra con financiamiento', true);
+    expect(controlCenter['getTemplateByName']).toHaveBeenCalledWith('Apartado de vehiculo', true);
+    expect(controlCenter['getDefaultTemplate']).not.toHaveBeenCalled();
     expect(orchestrator['getActiveCustomers']).toHaveBeenCalledWith(true);
     expect(orchestrator['getAvailableVehicles']).toHaveBeenCalledWith(true);
     expect(orchestrator['getSalesAgents']).toHaveBeenCalledWith(true);
     expect(orchestrator['getSalesServices']).toHaveBeenCalledWith(true);
-    expect(controlCenter['listProcesses']).toHaveBeenCalledWith(true);
+    expect(controlCenter['listProcesses']).toHaveBeenCalledWith(0, 10, true);
     expect(fixture.nativeElement.textContent).toContain('p1');
     expect(fixture.nativeElement.textContent).toContain('Ana Torres');
   });
@@ -195,7 +221,13 @@ describe('FlowDashboardComponent', () => {
   it('ofrece los flujos disponibles en un selector', () => {
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('input#flowId')).toBeNull();
+    const dashboard = component as unknown as {
+      flowOptions: { value: string; label: string }[];
+    };
+
+    expect(dashboard.flowOptions).toEqual(
+      FLOW_CATALOG.map((flow) => ({ value: flow.id, label: flow.label })),
+    );
     expect(fixture.nativeElement.textContent).toContain('Compra de vehículo');
   });
 
@@ -225,7 +257,7 @@ describe('FlowDashboardComponent', () => {
     expect(fixture.nativeElement.textContent).not.toContain('Completa todos los campos');
   });
 
-  it('inicia el flujo con la plantilla por defecto y abre el progreso', () => {
+  it('inicia el flujo con la plantilla del flujo seleccionado y abre el progreso', () => {
     fixture.detectChanges();
     fillForm();
 
@@ -247,6 +279,34 @@ describe('FlowDashboardComponent', () => {
     expect(dialog.textContent).toContain('Compra de vehículo');
   });
 
+  it('inicia el flujo de financiamiento con su propia plantilla', () => {
+    fixture.detectChanges();
+    fillForm();
+
+    const form = (component as unknown as {
+      form: { controls: Record<string, { setValue: (value: string) => void }> };
+    }).form;
+    form.controls['flowId'].setValue('compra-financiamiento');
+    fixture.detectChanges();
+
+    findButton(fixture.nativeElement, 'Iniciar flujo')!.click();
+
+    expect(controlCenter['startProcess']).toHaveBeenCalledWith({
+      processTemplateId: 'tpl-fin',
+      flowId: 'compra-financiamiento',
+      customerId: 'c1',
+      vehicleId: 'v1',
+      salesAgentId: 'a1',
+    });
+  });
+
+  it('muestra el flujo de cada ejecución en la lista', () => {
+    fixture.detectChanges();
+
+    const flowCell = fixture.nativeElement.querySelector('tbody tr td:nth-child(2)') as HTMLElement | null;
+    expect(flowCell?.textContent).toContain('Compra de vehículo');
+  });
+
   it('informa el estado de carga mientras inicia el flujo', () => {
     const pending = new Subject<ProcessExecutionResponse>();
     controlCenter['startProcess'].mockReturnValue(pending.asObservable());
@@ -263,18 +323,20 @@ describe('FlowDashboardComponent', () => {
   });
 
   it('no inicia el flujo cuando la plantilla no está disponible', () => {
-    controlCenter['getDefaultTemplate'].mockReturnValue(throwError(() => httpError('Sin plantilla.', 500)));
+    controlCenter['getTemplateByName'].mockReturnValue(throwError(() => httpError('Sin plantilla.', 500)));
     fixture.detectChanges();
     fillForm();
 
-    expect(fixture.nativeElement.textContent).toContain('Esperando la configuración del flujo');
+    expect(fixture.nativeElement.textContent).toContain(
+      'La plantilla de este flujo no está disponible',
+    );
     findButton(fixture.nativeElement, 'Iniciar flujo')!.click();
 
     expect(controlCenter['startProcess']).not.toHaveBeenCalled();
   });
 
   it('muestra el mensaje amigable del backend cuando falla la carga de catálogos y permite reintentar', () => {
-    controlCenter['getDefaultTemplate'].mockReturnValue(throwError(() => httpError('No pudimos cargar el flujo.', 409, 'CC-409')));
+    controlCenter['getTemplateByName'].mockReturnValue(throwError(() => httpError('No pudimos cargar el flujo.', 409, 'CC-409')));
     orchestrator['getActiveCustomers'].mockReturnValue(throwError(() => httpError('No pudimos cargar los clientes.')));
     fixture.detectChanges();
 
@@ -286,7 +348,7 @@ describe('FlowDashboardComponent', () => {
 
     findButton(fixture.nativeElement, 'Reintentar carga')!.click();
 
-    expect(controlCenter['getDefaultTemplate']).toHaveBeenCalledTimes(2);
+    expect(controlCenter['getTemplateByName']).toHaveBeenCalledTimes(FLOW_CATALOG.length * 2);
   });
 
   it('muestra el error de la lista de ejecuciones y la recarga con el botón de reintento', () => {
@@ -298,12 +360,56 @@ describe('FlowDashboardComponent', () => {
     expect(content).toContain('No pudimos listar las ejecuciones.');
     expect(content).toContain('CC-503');
 
-    controlCenter['listProcesses'].mockReturnValue(of([]));
+    controlCenter['listProcesses'].mockReturnValue(of(makePage([])));
     findButton(fixture.nativeElement, 'Reintentar')!.click();
     fixture.detectChanges();
 
     expect(controlCenter['listProcesses']).toHaveBeenCalledTimes(2);
     expect(fixture.nativeElement.textContent).toContain('No hay ejecuciones todavía');
+  });
+
+  it('pagina las ejecuciones y navega entre páginas', () => {
+    controlCenter['listProcesses'].mockReturnValue(
+      of(makePage([makeProcess('p1')], { totalElements: 25, totalPages: 3 })),
+    );
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Página 1 de 3 · 25 ejecuciones');
+    expect(findButton(fixture.nativeElement, 'Anterior')!.disabled).toBe(true);
+    expect(findButton(fixture.nativeElement, 'Siguiente')!.disabled).toBe(false);
+
+    findButton(fixture.nativeElement, 'Siguiente')!.click();
+    fixture.detectChanges();
+
+    expect(controlCenter['listProcesses']).toHaveBeenCalledWith(1, 10, true);
+    expect(fixture.nativeElement.textContent).toContain('Página 2 de 3');
+    expect(findButton(fixture.nativeElement, 'Anterior')!.disabled).toBe(false);
+
+    findButton(fixture.nativeElement, 'Anterior')!.click();
+    fixture.detectChanges();
+
+    expect(controlCenter['listProcesses']).toHaveBeenLastCalledWith(0, 10, true);
+  });
+
+  it('deshabilita el avance en la última página', () => {
+    controlCenter['listProcesses'].mockReturnValue(
+      of(makePage([makeProcess('p1')], { totalElements: 11, totalPages: 2 })),
+    );
+    fixture.detectChanges();
+
+    findButton(fixture.nativeElement, 'Siguiente')!.click();
+    fixture.detectChanges();
+
+    expect(controlCenter['listProcesses']).toHaveBeenCalledWith(1, 10, true);
+    expect(findButton(fixture.nativeElement, 'Siguiente')!.disabled).toBe(true);
+  });
+
+  it('oculta la navegación cuando hay una sola página', () => {
+    fixture.detectChanges();
+
+    expect(findButton(fixture.nativeElement, 'Siguiente')).toBeUndefined();
+    expect(findButton(fixture.nativeElement, 'Anterior')).toBeUndefined();
+    expect(fixture.nativeElement.textContent).not.toContain('Página 1 de 1');
   });
 
   it('abre el detalle de una ejecución en el diálogo sin navegar a otra página', () => {

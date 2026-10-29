@@ -75,17 +75,24 @@ describe('FlowTrackerComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('1 / 2');
   });
 
-  it('calcula el progreso y detecta fallos', () => {
+  it('calcula el progreso a partir del estado del proceso', () => {
     const state = component as unknown as {
       completedSteps: () => number;
       totalSteps: () => number;
-      hasFailed: () => boolean;
+      isFailed: () => boolean;
       progressLabel: () => string;
     };
 
     expect(state.completedSteps()).toBe(1);
     expect(state.totalSteps()).toBe(2);
-    expect(state.hasFailed()).toBe(true);
+    expect(state.isFailed()).toBe(false);
+    expect(state.progressLabel()).toBe('1 de 2 pasos completados');
+
+    controlCenter['getProcess'].mockReturnValue(of(makeProcess({ status: 'FAILED' })));
+    (fixture.nativeElement.querySelector('button[aria-label="Recargar"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(state.isFailed()).toBe(true);
     expect(state.progressLabel()).toBe('Falló el proceso');
   });
 
@@ -198,6 +205,7 @@ describe('FlowTrackerComponent', () => {
         { id: 's2', stepOrder: 2, name: 'Firmar', status: 'COMPLETED', retryCount: 0 },
       ]),
     );
+    controlCenter['getProcess'].mockReturnValue(of(makeProcess({ status: 'COMPLETED' })));
     (fixture.nativeElement.querySelector('button[aria-label="Recargar"]') as HTMLButtonElement).click();
     fixture.detectChanges();
 

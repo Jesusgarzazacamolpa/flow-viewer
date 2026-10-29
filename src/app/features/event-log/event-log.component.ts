@@ -3,6 +3,10 @@ import { CommonModule } from '@angular/common';
 import { FlowExecutionEvent } from '../../core/interfaces/process.models';
 import { IconComponent } from '../../shared/icon/icon.component';
 
+/**
+ * Selector `app-event-log`. Bitácora presentacional que lista los eventos de ejecución recibidos
+ * por `events`, con color e icono según el tipo de evento.
+ */
 @Component({
   selector: 'app-event-log',
   standalone: true,
@@ -11,16 +15,19 @@ import { IconComponent } from '../../shared/icon/icon.component';
   styleUrls: ['./event-log.component.css'],
 })
 export class EventLogComponent {
+  /** Eventos a mostrar, normalmente los emitidos por SSE en orden de llegada. */
   @Input() events: FlowExecutionEvent[] = [];
 
   trackByIdx(index: number, _: FlowExecutionEvent): number {
     return index;
   }
 
+  /** `trackBy` de la lista: usa el índice porque los eventos solo se agregan al final. */
   trackById(index: number, _: FlowExecutionEvent): number {
     return index;
   }
 
+  /** Traduce el código técnico del evento a una etiqueta legible en español. */
   eventTypeLabel(eventType: string): string {
     switch (eventType) {
       case 'STEP_STARTED': return 'Paso iniciado';
@@ -37,6 +44,7 @@ export class EventLogComponent {
     }
   }
 
+  /** Devuelve la clase del borde izquierdo que identifica visualmente el tipo de evento. */
   eventBorderClass(eventType: string): string {
     switch (eventType) {
       case 'STEP_COMPLETED': return 'border-green-500 dark:border-green-500';
@@ -52,6 +60,7 @@ export class EventLogComponent {
     }
   }
 
+  /** Devuelve las clases de color del badge del evento según su severidad implícita. */
   eventTypeBadgeClass(eventType: string): string {
     switch (eventType) {
       case 'STEP_COMPLETED':
@@ -73,6 +82,7 @@ export class EventLogComponent {
     }
   }
 
+  /** Nombre del icono de `app-icon` asociado al tipo de evento. */
   eventIconName(eventType: string): string {
     switch (eventType) {
       case 'STEP_COMPLETED':

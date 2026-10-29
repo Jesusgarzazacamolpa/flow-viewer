@@ -8,6 +8,10 @@ import { UserFacingError } from '../../core/models/api-error.model';
 import { toUserFacingError } from '../../core/interceptors/http-error.interceptor';
 import { ErrorBannerComponent } from '../../shared/error-banner/error-banner.component';
 
+/**
+ * Selector `app-shield`. Dashboard de seguridad que lista alertas y métricas de Shield; usa
+ * `ShieldService` para cargarlas y resolverlas, y `NotificationService` para confirmar acciones.
+ */
 @Component({
   selector: 'app-shield',
   standalone: true,
@@ -139,23 +143,30 @@ export class ShieldComponent implements OnInit {
   private readonly shieldService = inject(ShieldService);
   private readonly notifications = inject(NotificationService);
 
+  /** Alertas de seguridad cargadas desde Shield. */
   protected readonly alerts = signal<ShieldAlert[]>([]);
+  /** Métricas agregadas de alertas; se inicializan en cero hasta recibir la respuesta. */
   protected readonly stats = signal<ShieldStats>({
     totalAlerts: 0,
     alertsBySeverity: { LOW: 0, MEDIUM: 0, HIGH: 0, CRITICAL: 0 },
     alertsLast24h: 0,
     resolvedCount: 0,
   });
+  /** Error amigable de la última carga; se muestra en `app-error-banner`. */
   protected readonly loadError = signal<UserFacingError | null>(null);
+  /** Indica si hay cargas de alertas o métricas en curso. */
   protected readonly loading = signal(false);
+  /** Id de la alerta que se está resolviendo, para deshabilitar su botón. */
   protected readonly resolvingId = signal<string | null>(null);
 
+  /** Contador de peticiones activas para no ocultar el indicador hasta que terminen ambas. */
   private pendingLoads = 0;
 
   ngOnInit(): void {
     this.loadData();
   }
 
+  /** Carga en paralelo las alertas y las métricas, conservando el primer error que ocurra. */
   protected loadData(): void {
     this.loadError.set(null);
     this.beginLoad();
@@ -178,6 +189,7 @@ export class ShieldComponent implements OnInit {
       });
   }
 
+  /** Marca una alerta como resuelta, actualiza la fila y recarga las métricas en silencio. */
   protected resolve(alert: ShieldAlert): void {
     if (this.resolvingId()) return;
 
@@ -204,14 +216,17 @@ export class ShieldComponent implements OnInit {
       });
   }
 
+  /** Vuelve a cargar alertas y métricas; lo usan el botón de recarga y el reintento del banner. */
   protected refresh(): void {
     this.loadData();
   }
 
+  /** `trackBy` de la tabla de alertas basado en su id. */
   protected trackById(_index: number, alert: ShieldAlert): string {
     return alert.id;
   }
 
+  /** Clases de color del badge de severidad de la alerta. */
   protected severityClass(severity: ShieldAlert['severity']): string {
     switch (severity) {
       case 'CRITICAL':

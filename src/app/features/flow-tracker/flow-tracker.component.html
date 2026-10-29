@@ -86,9 +86,7 @@
         <app-icon name="clock" size="sm" colorClass="text-slate-500 dark:text-slate-400" />
         Línea de tiempo de pasos
       </h2>
-      <span class="text-xs" [class.text-green-500]="allCompleted()" [class.text-red-500]="hasFailed()" [class.text-slate-500]="!allCompleted() && !hasFailed()">
-        {{ progressLabel() }}
-      </span>
+      <span class="text-xs" [ngClass]="toneClass(progressTone())">{{ progressLabel() }}</span>
     </div>
 
          <app-step-timeline
@@ -97,25 +95,15 @@
            (retryStep)="retryStep($event)"
          />
 
-        <div *ngIf="hasFailed()" class="mt-4 rounded-lg border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/20 p-4">
-          <h3 class="mb-2 flex items-center gap-2 text-sm font-medium text-red-900 dark:text-red-300">
-            <app-icon name="exclamation-circle" size="sm" colorClass="text-red-600 dark:text-red-400" />
-            {{ process()?.userErrorTitle || 'Error del proceso' }}
-          </h3>
-          <p class="text-sm text-red-800 dark:text-red-300 mb-3">
-            {{ process()?.userErrorMessage || process()?.errorMessage || 'Error desconocido' }}
-          </p>
-          <button
-            *ngIf="canRetryProcess()"
-            type="button"
-            (click)="retryProcess()"
-            [disabled]="actionPending()"
-            class="inline-flex items-center gap-1.5 rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60 transition-colors"
-          >
-            <app-icon name="arrow-path" size="xs" />
-            {{ actionPending() ? 'Reintentando…' : (process()?.userErrorActionLabel || 'Reintentar proceso') }}
-          </button>
-        </div>
+        <app-process-error-panel
+          *ngIf="isFailed()"
+          class="mt-4 block"
+          [title]="process()?.userErrorTitle ?? null"
+          [message]="process()?.userErrorMessage || process()?.errorMessage || null"
+          [actionLabel]="process()?.userErrorActionLabel ?? null"
+          [busy]="actionPending()"
+          (retry)="retryProcess()"
+        />
 
         <div *ngIf="isPaused()" class="mt-4 rounded-lg border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-900/20 p-4">
           <h3 class="mb-2 flex items-center gap-2 text-sm font-medium text-amber-900 dark:text-amber-300">

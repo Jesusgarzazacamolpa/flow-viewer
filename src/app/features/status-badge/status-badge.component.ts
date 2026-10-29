@@ -2,6 +2,10 @@ import { Component, Input, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IconComponent } from '../../shared/icon/icon.component';
 
+/**
+ * Selector `app-status-badge`. Badge presentacional que muestra un estado como texto, color e icono;
+ * su único input es `status` y no emite eventos.
+ */
 @Component({
   selector: 'app-status-badge',
   standalone: true,
@@ -12,6 +16,7 @@ import { IconComponent } from '../../shared/icon/icon.component';
 export class StatusBadgeComponent {
   private readonly _status = signal<string>('UNKNOWN');
 
+  /** Estado a mostrar; se normaliza a mayúsculas y cae en "UNKNOWN" si viene vacío. */
   @Input()
   set status(val: string) {
     this._status.set(val?.toUpperCase() || 'UNKNOWN');
@@ -20,6 +25,7 @@ export class StatusBadgeComponent {
     return this._status();
   }
 
+  /** Etiqueta legible del estado; los códigos desconocidos se muestran como "Desconocido". */
   readonly label = computed(() => {
     switch (this._status()) {
       case 'PENDING':
@@ -61,6 +67,7 @@ export class StatusBadgeComponent {
     }
   });
 
+  /** Clases del contenedor del badge según la familia de estado. */
   readonly badgeClass = computed(() => {
     const s = this._status();
     switch (s) {
@@ -82,6 +89,7 @@ export class StatusBadgeComponent {
     }
   });
 
+  /** Clases del punto indicador de color que acompaña a la etiqueta. */
   readonly dotClass = computed(() => {
     const s = this._status();
     switch (s) {
@@ -103,12 +111,15 @@ export class StatusBadgeComponent {
     }
   });
 
+  /** Estados en curso a los que se les aplica la animación de pulso. */
   private readonly animatedStatuses = new Set(['RUNNING', 'IN_PROGRESS', 'CREATED']);
 
+   /** Indica si el badge debe animarse por corresponder a un estado en ejecución. */
    isAnimated() {
      return this.animatedStatuses.has(this._status());
    }
 
+   /** Nombre del icono de `app-icon` asociado a la familia del estado. */
    statusIconName(): string {
      const s = this._status();
      if (s === 'COMPLETED' || s === 'SUCCESS' || s === 'SENT') return 'check';

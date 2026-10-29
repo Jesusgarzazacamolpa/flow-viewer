@@ -30,6 +30,20 @@ describe('ControlCenterService', () => {
     silent.flush({ id: 'tpl-2' });
   });
 
+  it('resuelve la plantilla por nombre, opcionalmente en modo silencioso', () => {
+    service.getTemplateByName('Apartado de vehiculo').subscribe();
+    const normal = httpMock.expectOne((request) => request.url === '/api/process-templates/by-name');
+    expect(normal.request.params.get('name')).toBe('Apartado de vehiculo');
+    expect(normal.request.context.get(SILENT_ERROR_TOAST)).toBe(false);
+    normal.flush({ id: 'tpl-ap' });
+
+    service.getTemplateByName('Compra con financiamiento', true).subscribe();
+    const silent = httpMock.expectOne((request) => request.url === '/api/process-templates/by-name');
+    expect(silent.request.params.get('name')).toBe('Compra con financiamiento');
+    expect(silent.request.context.get(SILENT_ERROR_TOAST)).toBe(true);
+    silent.flush({ id: 'tpl-fin' });
+  });
+
   it('inicia el proceso con valores por defecto y permite sobrescribirlos', () => {
     service.startProcess({ processTemplateId: 'tpl-1' }).subscribe();
     const defaults = httpMock.expectOne('/api/processes/start');
@@ -59,10 +73,12 @@ describe('ControlCenterService', () => {
   });
 
   it('consulta procesos y pasos', () => {
-    service.listProcesses(true).subscribe();
-    const list = httpMock.expectOne('/api/processes');
+    service.listProcesses(0, 10, true).subscribe();
+    const list = httpMock.expectOne((request) => request.url === '/api/processes');
+    expect(list.request.params.get('page')).toBe('0');
+    expect(list.request.params.get('size')).toBe('10');
     expect(list.request.context.get(SILENT_ERROR_TOAST)).toBe(true);
-    list.flush([]);
+    list.flush({ content: [], page: 0, size: 10, totalElements: 0, totalPages: 0 });
 
     service.getProcess('p1', true).subscribe();
     httpMock.expectOne('/api/processes/p1').flush({});
@@ -72,10 +88,12 @@ describe('ControlCenterService', () => {
   });
 
   it('usa el manejo global de errores por defecto', () => {
-    service.listProcesses().subscribe();
-    const list = httpMock.expectOne('/api/processes');
+    service.listProcesses(2, 25).subscribe();
+    const list = httpMock.expectOne((request) => request.url === '/api/processes');
+    expect(list.request.params.get('page')).toBe('2');
+    expect(list.request.params.get('size')).toBe('25');
     expect(list.request.context.get(SILENT_ERROR_TOAST)).toBe(false);
-    list.flush([]);
+    list.flush({ content: [], page: 2, size: 25, totalElements: 0, totalPages: 0 });
 
     service.getProcess('p1').subscribe();
     const process = httpMock.expectOne('/api/processes/p1');
@@ -115,19 +133,20 @@ describe('ControlCenterService', () => {
   });
 
   it('lista y actualiza intervenciones', () => {
-    service.listInterventions('PENDING', true).subscribe();
+    service.listInterventions({ status: 'PENDING' }, true).subscribe();
     const list = httpMock.expectOne((request) => request.url === '/api/interventions');
     expect(list.request.params.get('status')).toBe('PENDING');
+    expect(list.request.params.has('processId')).toBe(false);
     expect(list.request.context.get(SILENT_ERROR_TOAST)).toBe(true);
     list.flush([]);
 
     service.getIntervention('i1').subscribe();
     httpMock.expectOne('/api/interventions/i1').flush({});
 
-    service.updateIntervention('i1', { status: 'RESUME', notes: 'ok' }).subscribe();
+    service.updateIntervention('i1', { status: 'APPROVED', notes: 'ok' }).subscribe();
     const update = httpMock.expectOne('/api/interventions/i1');
     expect(update.request.method).toBe('PUT');
-    expect(update.request.body).toEqual({ status: 'RESUME', notes: 'ok' });
+    expect(update.request.body).toEqual({ status: 'APPROVED', notes: 'ok' });
     update.flush({});
 
     service.assignIntervention('i1', 'ana').subscribe();
@@ -137,11 +156,29 @@ describe('ControlCenterService', () => {
     assign.flush({});
   });
 
-  it('reanuda una intervención con estado RESUME', () => {
+  it('filtra las intervenciones por proceso y estado en el servidor', () => {
+    service
+      .listInterventions({ processId: 'p1', status: 'PENDING_REVIEW' }, true)
+      .subscribe();
+    const req = httpMock.expectOne((request) => request.url === '/api/interventions');
+    expect(req.request.params.get('processId')).toBe('p1');
+    expect(req.request.params.get('status')).toBe('PENDING_REVIEW');
+    req.flush([]);
+  });
+
+  it('reanuda una intervención con estado APPROVED', () => {
     service.resumeIntervention('i1').subscribe();
     const req = httpMock.expectOne('/api/interventions/i1');
     expect(req.request.method).toBe('PUT');
-    expect(req.request.body.status).toBe('RESUME');
+    expect(req.request.body.status).toBe('APPROVED');
+    req.flush({});
+  });
+
+  it('rechaza una intervención con estado REJECTED', () => {
+    service.rejectIntervention('i1', 'Datos fiscales inválidos').subscribe();
+    const req = httpMock.expectOne('/api/interventions/i1');
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body).toEqual({ status: 'REJECTED', notes: 'Datos fiscales inválidos' });
     req.flush({});
   });
 });
